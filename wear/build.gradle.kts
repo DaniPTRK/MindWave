@@ -43,6 +43,14 @@ android {
 
 dependencies {
     implementation(libs.play.services.wearable)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // Sensor capture (health services & samsung health sensor sdk)
+    implementation(libs.androidx.health.services.client)
+    implementation(":samsung-health-sensor-api-1.4.1@aar")
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
