@@ -94,7 +94,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        // Populate maps when journal entries change
+        // Pre-load XAI and stress scores for all readings in the last 30 days
         viewModelScope.launch {
             journalEntries.collect { entries ->
                 val readingIds = entries.mapNotNull { it.readingId }.distinct()
