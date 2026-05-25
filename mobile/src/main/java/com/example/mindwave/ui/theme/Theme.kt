@@ -5,8 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 /**
- * MindWave "Ocean Teal" light theme. Colour tokens live in [Color.kt],
- * typography (Outfit font) in [Type.kt].
+ * MindWave overall theme - colors & typography
  */
 private val MindWaveLightColors = lightColorScheme(
     primary = WavePrimary,

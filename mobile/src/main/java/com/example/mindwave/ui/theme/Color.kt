@@ -26,13 +26,15 @@ val TextSecondary = Color(0xFF757575)
 val TextHint = Color(0xFF9E9E9E)
 
 // Sress scales
-val StressRelaxed = Color(0xFF27AE60)   // 0–30
-val StressCalm = Color(0xFF82C91E)      // 31–50
-val StressElevated = Color(0xFFF1C40F)  // 51–65
-val StressHigh = Color(0xFFF39C12)      // 66–80
-val StressCritical = Color(0xFFE74C3C)  // 81–100
+val StressRelaxed = Color(0xFF27AE60)
+val StressCalm = Color(0xFF82C91E)
+val StressElevated = Color(0xFFF1C40F)
+val StressHigh = Color(0xFFF39C12)
+val StressCritical = Color(0xFFE74C3C)
 
-// Maps a 0–100 stress percentage to its scale colour.
+/**
+ * Maps a 0–100 stress percentage to its scale colour
+ */
 fun stressColor(percent: Int): Color = when {
     percent <= 30 -> StressRelaxed
     percent <= 50 -> StressCalm
@@ -41,7 +43,9 @@ fun stressColor(percent: Int): Color = when {
     else -> StressCritical
 }
 
-// Label for a 0–100 stress percentage.
+/**
+ * Human-readable label for a 0–100 stress percentage
+ */
 fun stressLabel(percent: Int): String = when {
     percent <= 30 -> "Relaxed"
     percent <= 50 -> "Calm"
