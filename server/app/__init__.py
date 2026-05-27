@@ -1,0 +1,2 @@
+"""MindWave server package."""
+
