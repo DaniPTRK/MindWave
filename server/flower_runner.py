@@ -12,12 +12,13 @@ import time
 from pathlib import Path
 
 import flwr as fl
+import keras
 import numpy as np
 import requests
-import tensorflow as tf
 
 from flower_app import FedAvgWithSnapshot, build_strategy
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 logging.basicConfig(level=logging.INFO, format="[FL] %(message)s")
 log = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ log = logging.getLogger(__name__)
 class FlowerSettings(BaseSettings):
     models_dir: str = Field(default="/models")
     api_base_url: str = Field(default="http://api:8000", alias="API_BASE_URL")
-    fl_service_token: str = Field(..., alias="FL_SERVICE_TOKEN")  # REQUIRED
+    fl_service_token: str = Field(..., alias="FL_SERVICE_TOKEN")
     fl_num_rounds: int = Field(default=3, alias="FL_NUM_ROUNDS")
     fl_num_clients: int = Field(default=1, alias="FL_NUM_CLIENTS")
     flower_server_address: str = Field(default="0.0.0.0:9092", alias="FLOWER_SERVER_ADDRESS")
@@ -39,7 +40,7 @@ def load_initial_parameters(models_dir: Path) -> fl.common.Parameters:
         return fl.common.ndarrays_to_parameters([])
     chosen = candidates[-1]
     log.info("Loading initial weights from %s", chosen)
-    model = tf.keras.models.load_model(chosen, compile=False)
+    model = keras.models.load_model(chosen, compile=False)
     return fl.common.ndarrays_to_parameters(model.get_weights())
 
 
