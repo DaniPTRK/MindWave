@@ -49,12 +49,16 @@ import com.example.mindwave.data.WatchStressStore
 import com.example.mindwave.presentation.theme.MindWaveTheme
 import com.example.mindwave.sync.WearDataSender
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         setTheme(android.R.style.Theme_DeviceDefault)
+        // Seed the StateFlow with any previously persisted value so the
+        // UI shows the last known stress % immediately on launch.
+        WatchStressStore.load(this)
         setContent { WearApp() }
     }
 }
@@ -71,7 +75,8 @@ private fun stressColor(percent: Int): Color = when {
 fun WearApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snapshot = remember { WatchStressStore.load(context) }
+    // Collect from StateFlow
+    val snapshot by WatchStressStore.flow.collectAsStateWithLifecycle()
     var moodSent by remember { mutableStateOf(false) }
 
     MindWaveTheme {
