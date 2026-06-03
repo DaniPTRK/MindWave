@@ -1,0 +1,24 @@
+# Core numerics
+numpy>=1.26,<2.0
+pandas>=2.1
+scipy>=1.11 # Butterworth filters, welch PSD, resample
+scikit-learn>=1.3 # StandardScaler, metrics, LOSO splitter, class_weight
+
+# Deep learning
+tensorflow==2.15.* # pinned, stable ver LSTM -> TFLite UNIDIRECTIONAL_SEQUENCE_LSTM path
+
+# Physiological signal processing
+neurokit2>=0.2.7 # PPG peak detection, HRV time/freq, EDA decomposition + peaks
+
+# Plotting / notebooks
+matplotlib>=3.8
+seaborn>=0.13
+jupyterlab>=4.0
+
+# Utilities
+tqdm>=4.66
+joblib>=1.3 # scaler persistence
+
+# Federated learning
+# Pinned to 1.11.* for the modern ClientApp / ServerApp / run_simulation API.
+flwr[simulation]==1.11.*
