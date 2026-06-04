@@ -1,0 +1,39 @@
+# Dedicated image for the Flower aggregator server.
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential && rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --uid 10002 fluser
+
+# Slim dependency set, no FastAPI / SQLAlchemy
+
+# The saved model was produced by standalone Keras 3.x (keras_version: 3.14.1).
+# We match that exact version and tell keras to use TF as its compute backend.
+# tensorflow-cpu is only here as the keras backend; fl server itself is framework-agnostic.
+ENV KERAS_BACKEND=tensorflow
+
+RUN pip install --upgrade pip && \
+    pip install \
+        "tensorflow-cpu>=2.15" \
+        "keras==3.14.*" \
+        "flwr==1.11.*" \
+        "pydantic>=2.0" \
+        "pydantic-settings>=2.0" \
+        "numpy>=1.26,<2.0" \
+        "requests>=2.32"
+
+COPY flower_app ./flower_app
+COPY flower_runner.py ./flower_runner.py
+
+RUN chown -R fluser:fluser /app
+USER fluser
+
+EXPOSE 9092 9093
+
+CMD ["python", "flower_runner.py"]

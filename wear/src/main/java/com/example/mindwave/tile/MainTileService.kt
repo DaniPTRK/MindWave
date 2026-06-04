@@ -68,12 +68,25 @@ private fun tileLayout(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
 ): LayoutElementBuilders.LayoutElement {
+    val snapshot = com.example.mindwave.data.WatchStressStore.load(context)
+    val scoreText = if (snapshot.hasData) "${snapshot.percent}%" else "--"
+    val labelText = if (snapshot.hasData) snapshot.label else "No data yet"
     return PrimaryLayout.Builder(requestParams.deviceConfiguration)
         .setResponsiveContentInsetEnabled(true)
         .setContent(
-            Text.Builder(context, "Hello World!")
-                .setColor(argb(Colors.DEFAULT.onSurface))
-                .setTypography(Typography.TYPOGRAPHY_CAPTION1)
+            LayoutElementBuilders.Column.Builder()
+                .addContent(
+                    Text.Builder(context, scoreText)
+                        .setColor(argb(0xFF26C6DA.toInt()))
+                        .setTypography(Typography.TYPOGRAPHY_DISPLAY1)
+                        .build()
+                )
+                .addContent(
+                    Text.Builder(context, labelText)
+                        .setColor(argb(Colors.DEFAULT.onSurface))
+                        .setTypography(Typography.TYPOGRAPHY_CAPTION1)
+                        .build()
+                )
                 .build()
         ).build()
 }

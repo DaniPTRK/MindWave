@@ -16,6 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        flatDir {
+            dirs("${rootDir}/samsung-health-sensor-sdk-v1.4.1/1.4.1/libs")
+        }
     }
 }
 
