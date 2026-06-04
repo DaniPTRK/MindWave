@@ -112,18 +112,18 @@ private fun JournalEntryCard(
     var showDeleteDialog by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
     val moodIcon: ImageVector = when (entry.userMood) {
-        1    -> Icons.Filled.SentimentVerySatisfied
-        2    -> Icons.Filled.SentimentSatisfied
+        1    -> Icons.Filled.SentimentVeryDissatisfied
+        2    -> Icons.Filled.SentimentDissatisfied
         3    -> Icons.Filled.SentimentNeutral
-        4    -> Icons.Filled.SentimentDissatisfied
-        else -> Icons.Filled.SentimentVeryDissatisfied
+        4    -> Icons.Filled.SentimentSatisfied
+        else -> Icons.Filled.SentimentVerySatisfied
     }
     val moodLabel = when (entry.userMood) {
-        1    -> "Very calm"
-        2    -> "Calm"
+        1    -> "Very stressed"
+        2    -> "Tense"
         3    -> "Neutral"
-        4    -> "Tense"
-        else -> "Very stressed"
+        4    -> "Calm"
+        else -> "Very happy"
     }
 
     Card(

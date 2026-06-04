@@ -12,12 +12,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,7 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * History screen — 7×24 weekly heatmap + monthly trend.
+ * History screen — 7×24 weekly heatmap + monthly trend + per-signal charts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +43,7 @@ fun HistoryScreen(
 ) {
     val calendar = remember { Calendar.getInstance() }
     var weekOffset by remember { mutableIntStateOf(0) }
+    var sheetSignal by remember { mutableStateOf<SignalType?>(null) }
 
     // Compute the week start
     val weekStart = remember(weekOffset) {
@@ -54,12 +60,9 @@ fun HistoryScreen(
         (weekStart.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 7) }
     }
 
-    // Filter readings to this week
     val weekReadings = readings.filter {
         it.timestamp in weekStart.timeInMillis until weekEnd.timeInMillis
     }
-
-    // Build 7×24 grid data: average stress per cell
     val heatmapData = remember(weekReadings, weekStart) {
         buildHeatmap(weekReadings, weekStart)
     }
@@ -72,12 +75,35 @@ fun HistoryScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header
         Text(
             "Stress History",
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary,
         )
+
+        // Signal selector buttons
+        Text(
+            "View signal detail",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SignalButton(Icons.Filled.MonitorHeart, "Stress", Modifier.weight(1f)) {
+                sheetSignal = SignalType.STRESS
+            }
+            SignalButton(Icons.Filled.Favorite, "HRV", Modifier.weight(1f)) {
+                sheetSignal = SignalType.HRV
+            }
+            SignalButton(Icons.Filled.Thermostat, "Temp", Modifier.weight(1f)) {
+                sheetSignal = SignalType.TEMPERATURE
+            }
+            SignalButton(Icons.Filled.WaterDrop, "EDA", Modifier.weight(1f)) {
+                sheetSignal = SignalType.EDA
+            }
+        }
 
         // Week navigation
         Row(
@@ -108,7 +134,6 @@ fun HistoryScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                // Day headers
                 val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Spacer(Modifier.width(28.dp))
@@ -124,7 +149,6 @@ fun HistoryScreen(
                 }
                 Spacer(Modifier.height(4.dp))
 
-                // 24 rows × 7 columns
                 for (hour in 0..23) {
                     Row(
                         modifier = Modifier.fillMaxWidth().height(16.dp),
@@ -153,7 +177,6 @@ fun HistoryScreen(
                     }
                 }
 
-                // Legend
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -207,6 +230,35 @@ fun HistoryScreen(
             }
         }
     }
+
+    // Signal detail popup
+    sheetSignal?.let { signal ->
+        SignalDetailSheet(
+            signal = signal,
+            readings = readings,
+            onDismiss = { sheetSignal = null },
+        )
+    }
+}
+
+@Composable
+private fun SignalButton(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = label, modifier = Modifier.size(18.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
+    }
 }
 
 @Composable
@@ -228,14 +280,13 @@ private fun buildHeatmap(
     readings: List<StressReading>,
     weekStart: Calendar
 ): Array<FloatArray> {
-    // 7 days × 24 hours, -1 means no data
     val grid = Array(7) { FloatArray(24) { -1f } }
     val counts = Array(7) { IntArray(24) }
     val sums = Array(7) { FloatArray(24) }
 
     for (r in readings) {
         val cal = Calendar.getInstance().apply { timeInMillis = r.timestamp }
-        val dayOfWeek = ((cal.get(Calendar.DAY_OF_WEEK) + 5) % 7) // Mon=0..Sun=6
+        val dayOfWeek = ((cal.get(Calendar.DAY_OF_WEEK) + 5) % 7)
         val hour = cal.get(Calendar.HOUR_OF_DAY)
         sums[dayOfWeek][hour] += r.stressProbStress
         counts[dayOfWeek][hour]++
@@ -247,7 +298,7 @@ private fun buildHeatmap(
 }
 
 private fun stressColor(value: Float): Color = when {
-    value < 0f -> Color(0xFF1A3A52) // no data
+    value < 0f -> Color(0xFF1A3A52)
     value < 0.4f -> Color(0xFF27AE60)
     value < 0.7f -> Color(0xFFF1C40F)
     else -> Color(0xFFE74C3C)

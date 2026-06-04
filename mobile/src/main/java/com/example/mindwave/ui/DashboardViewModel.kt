@@ -23,6 +23,9 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     private val journalDao = db.journalDao()
     private val contextDao = db.contextDao()
 
+    // Current user's email, used to get account-related data
+    private val currentEmail: String = AuthRepository(app).getEmail() ?: ""
+
     /** Latest reading */
     val latestReading: StateFlow<StressReading?> =
         stressDao.getLatest(1)
@@ -55,12 +58,13 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     }
 
-    /** All journal entries (for journal list screen). */
+    /** All journal entries for this acc */
     val journalEntries: StateFlow<List<EmotionalJournal>> = run {
         val yearAgo = Calendar.getInstance().apply {
             add(Calendar.YEAR, -1)
         }.timeInMillis
-        journalDao.getByRange(yearAgo, System.currentTimeMillis())
+        // Use Long.MAX_VALUE so newly inserted entries are always within range
+        journalDao.getByRange(yearAgo, Long.MAX_VALUE, currentEmail)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     }
 
@@ -114,6 +118,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Save user feedback (true = "yes stressed", false = "false alarm").
+     * mood=1 → stressed/sad; mood=5 → calm/happy — matches JournalDialog convention.
      */
     fun saveFeedback(isStressed: Boolean) {
         viewModelScope.launch {
@@ -122,9 +127,10 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                 EmotionalJournal(
                     readingId = reading.id,
                     timestamp = System.currentTimeMillis(),
-                    userMood = if (isStressed) 5 else 1,
+                    userMood = if (isStressed) 1 else 5,
                     note = if (isStressed) "Confirmed stress" else "False alarm",
                     tags = "feedback",
+                    userEmail = currentEmail,
                 )
             )
         }
@@ -140,6 +146,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
                     userMood = mood,
                     note = note,
                     tags = "",
+                    userEmail = currentEmail,
                 )
             )
         }

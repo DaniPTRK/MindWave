@@ -22,8 +22,8 @@ import java.net.URL
  */
 class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val settingsRepo = SettingsRepository(app)
     private val authRepo = AuthRepository(app)
+    private val settingsRepo = SettingsRepository(app, authRepo.getEmail() ?: "")
     private val db = MindWaveDatabase.getInstance(app)
 
     val email: String = authRepo.getEmail() ?: "Signed in"
@@ -66,7 +66,9 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             // 2. Wipe local data and tokens regardless of server result.
-            db.clearAllTables()
+            withContext(Dispatchers.IO ) {
+                db.clearAllTables()
+            }
             authRepo.logout()
             onDone()
         }
@@ -78,7 +80,9 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun seedDemoData(onDone: () -> Unit = {}) {
         viewModelScope.launch {
-            DemoDataSeeder.seed(db, replaceExisting = true)
+            withContext(Dispatchers.IO) {
+                DemoDataSeeder.seed(db, userEmail = authRepo.getEmail() ?: "", replaceExisting = true)
+            }
             onDone()
         }
     }

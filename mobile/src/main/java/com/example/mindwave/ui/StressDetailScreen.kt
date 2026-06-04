@@ -76,10 +76,16 @@ fun StressDetailScreen(
             colors = CardDefaults.cardColors(containerColor = stressColor.copy(alpha = 0.15f)),
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Warning,
                         contentDescription = "Warning",
@@ -95,13 +101,18 @@ fun StressDetailScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "${(stressProb * 100).toInt()}%",
+                    modifier = Modifier.fillMaxWidth(),
                     fontSize = 56.sp,
                     fontWeight = FontWeight.Bold,
                     color = stressColor,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 Text(stressLabel,
+                    modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground)
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
         }
 
@@ -244,21 +255,26 @@ fun StressDetailScreen(
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        Triple(Icons.Filled.SentimentVeryDissatisfied, 5, "Very stressed"),
-                        Triple(Icons.Filled.SentimentDissatisfied,     4, "Tense"),
-                        Triple(Icons.Filled.SentimentNeutral,          3, "Neutral"),
-                        Triple(Icons.Filled.SentimentSatisfied,        2, "Calm"),
-                        Triple(Icons.Filled.SentimentVerySatisfied,    1, "Very calm"),
-                    ).forEach { (icon, mood, label) ->
-                        IconButton(onClick = { onJournalEntry(mood, "Quick: $label") }) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = label,
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            Triple(Icons.Filled.SentimentVeryDissatisfied, 1, "Very stressed"),
+                            Triple(Icons.Filled.SentimentDissatisfied,     2, "Tense"),
+                            Triple(Icons.Filled.SentimentNeutral,          3, "Neutral"),
+                            Triple(Icons.Filled.SentimentSatisfied,        4, "Calm"),
+                            Triple(Icons.Filled.SentimentVerySatisfied,    5, "Very calm"),
+                        ).forEach { (icon, mood, label) ->
+                            IconButton(onClick = { onJournalEntry(mood, "Quick: $label") }) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    modifier = Modifier.size(32.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }
