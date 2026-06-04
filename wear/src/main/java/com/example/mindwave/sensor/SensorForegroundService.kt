@@ -51,12 +51,17 @@ class SensorForegroundService : Service() {
         val edaValue = MutableStateFlow(0.0)
         val isRunning = MutableStateFlow(false)
 
-        val hrBuffer = CopyOnWriteArrayList<TimestampedValue>()
+        val hrBuffer   = CopyOnWriteArrayList<TimestampedValue>()
         val tempBuffer = CopyOnWriteArrayList<TimestampedValue>()
-        val edaBuffer = CopyOnWriteArrayList<TimestampedValue>()
+        val edaBuffer  = CopyOnWriteArrayList<TimestampedValue>()
+        val accXBuffer = CopyOnWriteArrayList<TimestampedValue>()
+        val accYBuffer = CopyOnWriteArrayList<TimestampedValue>()
+        val accZBuffer = CopyOnWriteArrayList<TimestampedValue>()
 
         // True only if the EDA tracker registered successfully.
         val edaAvailable = MutableStateFlow(false)
+        // True only if the ACC tracker registered successfully.
+        val accAvailable = MutableStateFlow(false)
     }
 
     data class TimestampedValue(val epochMs: Long, val value: Double)
@@ -68,6 +73,7 @@ class SensorForegroundService : Service() {
     private var healthTrackingService: HealthTrackingService? = null
     private var edaTracker: HealthTracker? = null
     private var tempTracker: HealthTracker? = null
+    private var accTracker: HealthTracker? = null
 
     // Heart rate callbacks
     private val heartRateCallback = object : MeasureCallback {
@@ -119,6 +125,29 @@ class SensorForegroundService : Service() {
         override fun onFlushCompleted() {}
         override fun onError(error: HealthTracker.TrackerError) {
             Log.e(TAG, "TEMP error: ${error.name}")
+        }
+    }
+
+    // Accelerometer callbacks (~25 Hz continuous)
+    private val accTrackerListener = object : HealthTracker.TrackerEventListener {
+        override fun onDataReceived(dataPoints: List<SamsungDataPoint>) {
+            val ts = System.currentTimeMillis()
+            for (dp in dataPoints) {
+                try {
+                    val x = dp.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_X).toDouble()
+                    val y = dp.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_Y).toDouble()
+                    val z = dp.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_Z).toDouble()
+                    accXBuffer.add(TimestampedValue(ts, x))
+                    accYBuffer.add(TimestampedValue(ts, y))
+                    accZBuffer.add(TimestampedValue(ts, z))
+                } catch (e: Exception) {
+                    Log.w(TAG, "ACC parse error: ${e.message}")
+                }
+            }
+        }
+        override fun onFlushCompleted() {}
+        override fun onError(error: HealthTracker.TrackerError) {
+            Log.e(TAG, "ACC error: ${error.name}")
         }
     }
 
@@ -186,6 +215,15 @@ class SensorForegroundService : Service() {
             tempTracker = service.getHealthTracker(HealthTrackerType.SKIN_TEMPERATURE_CONTINUOUS)
             tempTracker?.setEventListener(tempTrackerListener)
         } catch (e: Exception) { Log.e(TAG, "TEMP tracker failed: ${e.message}") }
+        try {
+            accTracker = service.getHealthTracker(HealthTrackerType.ACCELEROMETER_CONTINUOUS)
+            accTracker?.setEventListener(accTrackerListener)
+            accAvailable.value = true
+            Log.i(TAG, "ACC tracker registered")
+        } catch (e: Exception) {
+            accAvailable.value = false
+            Log.w(TAG, "ACC tracker unavailable on this device: ${e.message}")
+        }
     }
 
     override fun onDestroy() {
@@ -196,10 +234,12 @@ class SensorForegroundService : Service() {
         try {
             edaTracker?.unsetEventListener()
             tempTracker?.unsetEventListener()
+            accTracker?.unsetEventListener()
             healthTrackingService?.disconnectService()
         } catch (e: Exception) { Log.e(TAG, "Samsung cleanup error: ${e.message}") }
         edaTracker = null
         tempTracker = null
+        accTracker = null
         healthTrackingService = null
         isRunning.value = false
         scope.cancel()
