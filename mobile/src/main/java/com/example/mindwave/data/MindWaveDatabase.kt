@@ -21,7 +21,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EmotionalJournal::class,
         ContextEvent::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = true
 )
 abstract class MindWaveDatabase : RoomDatabase() {
@@ -43,6 +43,29 @@ abstract class MindWaveDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE emotional_journals ADD COLUMN userEmail TEXT NOT NULL DEFAULT ''"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_emotional_journals_userEmail ON emotional_journals(userEmail)"
+                )
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Scope stress readings (and transitively XAI + context events) to one account
+                database.execSQL(
+                    "ALTER TABLE stress_readings ADD COLUMN userEmail TEXT NOT NULL DEFAULT ''"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_stress_readings_userEmail ON stress_readings(userEmail)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): MindWaveDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -50,7 +73,7 @@ abstract class MindWaveDatabase : RoomDatabase() {
                     MindWaveDatabase::class.java,
                     "mindwave.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { INSTANCE = it }
             }
     }

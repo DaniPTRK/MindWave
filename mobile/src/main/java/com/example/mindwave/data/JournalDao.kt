@@ -19,8 +19,8 @@ interface JournalDao {
     @Query("DELETE FROM emotional_journals WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("SELECT * FROM emotional_journals WHERE timestamp BETWEEN :startTs AND :endTs ORDER BY timestamp DESC")
-    fun getByRange(startTs: Long, endTs: Long): Flow<List<EmotionalJournal>>
+    @Query("SELECT * FROM emotional_journals WHERE timestamp BETWEEN :startTs AND :endTs AND (userEmail = :userEmail OR userEmail = '') ORDER BY timestamp DESC")
+    fun getByRange(startTs: Long, endTs: Long, userEmail: String): Flow<List<EmotionalJournal>>
 
     // Lookup the feedback mood for a specific reading
     @Query("SELECT userMood FROM emotional_journals WHERE readingId = :readingId AND tags = 'feedback' LIMIT 1")

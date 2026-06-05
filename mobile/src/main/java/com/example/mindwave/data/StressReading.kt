@@ -1,6 +1,7 @@
 package com.example.mindwave.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -9,11 +10,18 @@ import androidx.room.PrimaryKey
  * Stores the key sensor features extracted from the 60s wrist window,
  * the predicted stress class and its per-class probabilities, plus a
  * sync flag for the FedLearning cycle.
+ *
+ * userEmail scopes readings to the logged-in account on this device.
+ * All biometric data stays on-device; this field is never uploaded.
  */
-@Entity(tableName = "stress_readings")
+@Entity(
+    tableName = "stress_readings",
+    indices = [Index("userEmail")],
+)
 data class StressReading(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val timestamp: Long, // epoch millis
+    val userEmail: String = "", // owner — scopes this reading to one account on device
 
     // Model input, aggregated features from the 60 s window
     val hrvMean: Float,

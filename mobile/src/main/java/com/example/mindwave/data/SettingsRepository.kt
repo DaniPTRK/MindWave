@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+// Single DataStore file; keys are namespaced per account via a prefix.
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mindwave_settings")
 
 /**
@@ -20,50 +21,56 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  * Holds the stress-alert threshold, FL participation, calendar integration,
  * and do not disturb hours used by the stress alert worker.
  */
-class SettingsRepository(private val context: Context) {
+class SettingsRepository(private val context: Context, private val userEmail: String = "") {
+
+    // Sanitize the email to a safe key prefix
+    private val prefix = userEmail.lowercase().replace(Regex("[^a-z0-9]"), "_").take(40)
+        .let { if (it.isBlank()) "default" else it }
 
     data class Settings(
         val alertThreshold: Float = 0.85f,
         val flEnabled: Boolean = true,
         val calendarEnabled: Boolean = false,
         val quietHoursEnabled: Boolean = true,
-        val quietStartHour: Int = 22,   // 22:00
-        val quietEndHour: Int = 7,      // 07:00
+        val quietStartHour: Int = 22,
+        val quietEndHour: Int = 7,
     )
 
     val settings: Flow<Settings> = context.dataStore.data.map { p ->
         Settings(
-            alertThreshold = p[KEY_THRESHOLD] ?: 0.85f,
-            flEnabled = p[KEY_FL] ?: true,
-            calendarEnabled = p[KEY_CALENDAR] ?: false,
-            quietHoursEnabled = p[KEY_QUIET_ON] ?: true,
-            quietStartHour = p[KEY_QUIET_START] ?: 22,
-            quietEndHour = p[KEY_QUIET_END] ?: 7,
+            alertThreshold = p[keyThreshold] ?: 0.85f,
+            flEnabled = p[keyFl] ?: true,
+            calendarEnabled = p[keyCalendar] ?: false,
+            quietHoursEnabled = p[keyQuietOn] ?: true,
+            quietStartHour = p[keyQuietStart] ?: 22,
+            quietEndHour = p[keyQuietEnd] ?: 7,
         )
     }
 
     suspend fun current(): Settings = settings.first()
 
-    suspend fun setThreshold(value: Float) = edit { it[KEY_THRESHOLD] = value }
-    suspend fun setFlEnabled(value: Boolean) = edit { it[KEY_FL] = value }
-    suspend fun setCalendarEnabled(value: Boolean) = edit { it[KEY_CALENDAR] = value }
-    suspend fun setQuietHoursEnabled(value: Boolean) = edit { it[KEY_QUIET_ON] = value }
+    suspend fun setThreshold(value: Float) = edit { it[keyThreshold] = value }
+    suspend fun setFlEnabled(value: Boolean) = edit { it[keyFl] = value }
+    suspend fun setCalendarEnabled(value: Boolean) = edit { it[keyCalendar] = value }
+    suspend fun setQuietHoursEnabled(value: Boolean) = edit { it[keyQuietOn] = value }
     suspend fun setQuietWindow(startHour: Int, endHour: Int) = edit {
-        it[KEY_QUIET_START] = startHour
-        it[KEY_QUIET_END] = endHour
+        it[keyQuietStart] = startHour
+        it[keyQuietEnd] = endHour
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
 
+    // Per-user preference keys, prefixed with the sanitized email slug
+    private val keyThreshold  = floatPreferencesKey("${prefix}_alert_threshold")
+    private val keyFl         = booleanPreferencesKey("${prefix}_fl_enabled")
+    private val keyCalendar   = booleanPreferencesKey("${prefix}_calendar_enabled")
+    private val keyQuietOn    = booleanPreferencesKey("${prefix}_quiet_hours_enabled")
+    private val keyQuietStart = intPreferencesKey("${prefix}_quiet_start_hour")
+    private val keyQuietEnd   = intPreferencesKey("${prefix}_quiet_end_hour")
+
     companion object {
-        private val KEY_THRESHOLD = floatPreferencesKey("alert_threshold")
-        private val KEY_FL = booleanPreferencesKey("fl_enabled")
-        private val KEY_CALENDAR = booleanPreferencesKey("calendar_enabled")
-        private val KEY_QUIET_ON = booleanPreferencesKey("quiet_hours_enabled")
-        private val KEY_QUIET_START = intPreferencesKey("quiet_start_hour")
-        private val KEY_QUIET_END = intPreferencesKey("quiet_end_hour")
         fun isWithinQuietHours(hour: Int, startHour: Int, endHour: Int): Boolean =
             if (startHour <= endHour) hour in startHour until endHour
             else hour >= startHour || hour < endHour
