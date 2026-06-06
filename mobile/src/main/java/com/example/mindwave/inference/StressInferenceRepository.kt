@@ -2,6 +2,7 @@ package com.example.mindwave.inference
 
 import android.content.Context
 import android.util.Log
+import com.example.mindwave.data.AuthRepository
 import com.example.mindwave.data.MindWaveDatabase
 import com.example.mindwave.data.StressReading
 import com.example.mindwave.data.XaiExplanation
@@ -50,6 +51,7 @@ class StressInferenceRepository private constructor(private val context: Context
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val db = MindWaveDatabase.getInstance(context)
+    private val authRepo = AuthRepository(context)
     private val contextCorrelator = com.example.mindwave.data.ContextCorrelator(context)
     private val scaler = ScalerNormalizer.fromAssets(context)
     @Volatile private var interpreter: Interpreter? = null
@@ -123,6 +125,7 @@ class StressInferenceRepository private constructor(private val context: Context
         // Persist StressReading to Room
         val reading = StressReading(
             timestamp           = window.timestamp,
+            userEmail           = authRepo.getEmail() ?: "",
             hrvMean             = rawFeatures.extractFeatureAt(0),  // raw, human-readable
             hrvSdnn             = rawFeatures.extractFeatureAt(1),
             hrvRmssd            = rawFeatures.extractFeatureAt(2),

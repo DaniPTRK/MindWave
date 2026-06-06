@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.work.*
 import androidx.work.WorkerParameters
+import com.example.mindwave.data.AuthRepository
 import com.example.mindwave.data.MindWaveDatabase
 import com.example.mindwave.data.SettingsRepository
 import java.util.Calendar
@@ -37,9 +38,10 @@ class StressAlertWorker(
 
     override suspend fun doWork(): Result {
         val db = MindWaveDatabase.getInstance(ctx)
+        val authRepo = AuthRepository(ctx)
         val settings = SettingsRepository(ctx).current()
 
-        val readings = db.stressDao().getLatestSync(1)
+        val readings = db.stressDao().getLatestSync(1, userEmail = authRepo.getEmail() ?: "")
         if (readings.isEmpty()) return Result.success()
 
         val latest = readings.first()

@@ -86,7 +86,7 @@ fun SensorStatusScreen(
                     Spacer(Modifier.width(16.dp))
                     Column {
                         Text(
-                            if (connected) "Galaxy Watch connected" else "Watch not connected",
+                            if (connected) "Smartwatch connected" else "Watch not connected",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -109,28 +109,28 @@ fun SensorStatusScreen(
                 label = "Heart Rate",
                 sublabel = "Beats per minute · ~1 Hz",
                 status = if (connected) SensorStatus.ACTIVE else SensorStatus.OFFLINE,
-                hardware = "Any Wear OS 3+ device",
+                hardware = "Wear OS +3",
             )
             SensorRow(
                 icon = Icons.Filled.WaterDrop,
                 label = "EDA / Sweat",
                 sublabel = "Skin conductance · ~4 Hz",
                 status = if (connected) SensorStatus.ACTIVE else SensorStatus.OFFLINE,
-                hardware = "Samsung Galaxy Watch 4 / 5 / 6 / 7",
+                hardware = "Samsung Galaxy Watch +4",
             )
             SensorRow(
                 icon = Icons.Filled.Thermostat,
                 label = "Skin Temperature",
                 sublabel = "Wrist temp · ~0.1 Hz",
                 status = if (connected) SensorStatus.ACTIVE else SensorStatus.OFFLINE,
-                hardware = "Samsung Galaxy Watch 4 / 5 / 6 / 7",
+                hardware = "Samsung Galaxy Watch +4",
             )
             SensorRow(
                 icon = Icons.Filled.DirectionsRun,
                 label = "Accelerometer",
                 sublabel = "Tri-axial wrist motion · ~25 Hz",
                 status = if (connected) SensorStatus.ACTIVE else SensorStatus.OFFLINE,
-                hardware = "Samsung Galaxy Watch 4 / 5 / 6 / 7",
+                hardware = "Samsung Galaxy Watch +4",
             )
 
             // Privacy note
@@ -146,7 +146,7 @@ fun SensorStatusScreen(
                     Icon(Icons.Filled.Lock, null, Modifier.size(20.dp), tint = Color(0xFF4DD0E1))
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "Raw sensor data never leaves your phone. " +
+                        "Sensor data never leaves your phone. " +
                                 "Only encrypted model weights are shared for federated learning.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFFB2DFDB),
@@ -166,11 +166,9 @@ fun SensorStatusScreen(
                             color = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.height(8.dp))
                         listOf(
-                            "1. Open the Galaxy Wearable app on this phone.",
-                            "2. Pair your Samsung Galaxy Watch if not already paired.",
-                            "3. Open the MindWave app on the watch.",
-                            "4. The sensor service will start automatically.",
-                            "5. Return here — data will appear within 60 seconds.",
+                            "1. Open the MindWave app on the watch.",
+                            "2. The sensor service will start automatically.",
+                            "3. Return here, data will appear within 60 seconds.",
                         ).forEach { step ->
                             Text(step, style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,

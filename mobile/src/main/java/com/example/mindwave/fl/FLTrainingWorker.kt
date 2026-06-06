@@ -132,7 +132,7 @@ class FLTrainingWorker(
         }
 
         // Load feedback-labelled readings
-        val readings = db.stressDao().getUnsyncedWithFeedback()
+        val readings = db.stressDao().getUnsyncedWithFeedback(authRepo.getEmail() ?: "")
         if (readings.size < MIN_FEEDBACK_SAMPLES) {
             Log.i(TAG, "Only ${readings.size} feedback sample(s), need $MIN_FEEDBACK_SAMPLES, skipping training")
             return@withContext Result.success()
@@ -143,7 +143,8 @@ class FLTrainingWorker(
         val labelledSamples = readings.mapNotNull { reading ->
             val tensor = reading.featureTensor ?: return@mapNotNull null
             val mood = db.journalDao().getFeedbackMood(reading.id) ?: return@mapNotNull null
-            val label = if (mood >= 4) 1L else 0L
+            // mood 1-2 = stressed/sad → label=1 (stress); mood 4-5 = calm/happy → label=0
+            val label = if (mood <= 2) 1L else 0L
             tensor to label
         }
 

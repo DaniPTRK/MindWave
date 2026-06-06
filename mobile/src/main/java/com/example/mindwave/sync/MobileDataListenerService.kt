@@ -2,6 +2,7 @@ package com.example.mindwave.sync
 
 import android.content.Context
 import android.util.Log
+import com.example.mindwave.data.AuthRepository
 import com.example.mindwave.data.EmotionalJournal
 import com.example.mindwave.data.MindWaveDatabase
 import com.google.android.gms.wearable.DataClient
@@ -58,6 +59,7 @@ class MobileDataListenerService : WearableListenerService() {
                 val ts = map.getLong("timestamp", System.currentTimeMillis())
                 if (mood in 1..5) {
                     scope.launch {
+                        val email = AuthRepository(applicationContext).getEmail() ?: ""
                         MindWaveDatabase.getInstance(applicationContext).journalDao().insert(
                             EmotionalJournal(
                                 readingId = null,
@@ -65,6 +67,7 @@ class MobileDataListenerService : WearableListenerService() {
                                 userMood = mood,
                                 note = "",
                                 tags = "watch_quick_reply",
+                                userEmail = email,
                             )
                         )
                         Log.i(TAG, "Stored watch mood quick-reply: $mood")

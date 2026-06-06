@@ -162,7 +162,7 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Pair your Galaxy Watch, then start the MindWave service on the watch.",
+                    "Pair your Smartwatch, then start the MindWave service on the watch.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -213,7 +213,7 @@ private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    Text("Open Galaxy Wearable and start the MindWave service on the watch.",
+                    Text("Open the smart wearable and start the MindWave service on the watch.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

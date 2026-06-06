@@ -28,7 +28,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Latest reading */
     val latestReading: StateFlow<StressReading?> =
-        stressDao.getLatest(1)
+        stressDao.getLatest(1, currentEmail)
             .map { it.firstOrNull() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -54,7 +54,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
         val thirtyDaysAgo = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, -30)
         }.timeInMillis
-        stressDao.getByRange(thirtyDaysAgo, System.currentTimeMillis())
+        stressDao.getByRange(thirtyDaysAgo, System.currentTimeMillis(), currentEmail)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     }
 
@@ -88,7 +88,7 @@ class DashboardViewModel(app: Application) : AndroidViewModel(app) {
     fun loadStressDetail(readingId: Long) {
         viewModelScope.launch {
             val reading = if (readingId > 0) stressDao.getById(readingId)
-                          else stressDao.getLatestSync(1).firstOrNull()
+                          else stressDao.getLatestSync(1, currentEmail).firstOrNull()
             detailReading = reading
             detailXai = reading?.let { xaiDao.getByReadingId(it.id) } ?: emptyList()
             detailContext = reading?.let { r ->
