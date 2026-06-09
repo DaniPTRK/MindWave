@@ -74,7 +74,7 @@ object DemoDataSeeder {
                 val prob = (baseStress + rng.nextFloat() * 0.4f - 0.15f).coerceIn(0.05f, 0.97f)
                 val isStress = prob > 0.5f
 
-                val reading = buildReading(ts, prob, isStress, rng)
+                val reading = buildReading(ts, prob, isStress, rng, userEmail)
                 val readingId = stressDao.insert(reading)
                 xaiDao.insertAll(buildXai(readingId, isStress, rng))
 
@@ -119,6 +119,7 @@ object DemoDataSeeder {
         probStress: Float,
         isStress: Boolean,
         rng: Random,
+        userEmail: String = "",
     ): StressReading {
         val hrvMean = lerp(820f, 680f, probStress) + rng.nextFloat() * 30
         val hrvSdnn = lerp(60f, 28f, probStress) + rng.nextFloat() * 8
@@ -130,6 +131,7 @@ object DemoDataSeeder {
 
         return StressReading(
             timestamp = ts,
+            userEmail = userEmail,
             hrvMean = hrvMean,
             hrvSdnn = hrvSdnn,
             hrvRmssd = hrvRmssd,
