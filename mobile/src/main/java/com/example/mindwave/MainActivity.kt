@@ -28,8 +28,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Ask the user to exempt MindWave from Doze/battery optimisation so the
-     * nightly FL WorkManager round can actually fire at ~2 AM. Without this,
-     * Android defers background work indefinitely on most devices.
+     * nightly FL WorkManager round can actually fire at 2 AM.
      */
     private fun requestBatteryOptimizationExemption() {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -42,7 +41,6 @@ class MainActivity : ComponentActivity() {
                     )
                 )
             } catch (_: Exception) {
-                // Some OEMs block this intent; safe to ignore.
             }
         }
     }

@@ -2,6 +2,7 @@ package com.example.mindwave.sync
 
 import android.content.Context
 import android.util.Log
+import com.example.mindwave.data.AuthRepository
 import com.example.mindwave.data.EmotionalJournal
 import com.example.mindwave.data.MindWaveDatabase
 import com.google.android.gms.wearable.DataClient
@@ -38,6 +39,9 @@ class MobileDataListenerService : WearableListenerService() {
         val tempValues: FloatArray,
         val edaTimes: LongArray,
         val edaValues: FloatArray,
+        val accXValues: FloatArray,
+        val accYValues: FloatArray,
+        val accZValues: FloatArray,
         val mood: Int,
     )
 
@@ -55,6 +59,7 @@ class MobileDataListenerService : WearableListenerService() {
                 val ts = map.getLong("timestamp", System.currentTimeMillis())
                 if (mood in 1..5) {
                     scope.launch {
+                        val email = AuthRepository(applicationContext).getEmail() ?: ""
                         MindWaveDatabase.getInstance(applicationContext).journalDao().insert(
                             EmotionalJournal(
                                 readingId = null,
@@ -62,6 +67,7 @@ class MobileDataListenerService : WearableListenerService() {
                                 userMood = mood,
                                 note = "",
                                 tags = "watch_quick_reply",
+                                userEmail = email,
                             )
                         )
                         Log.i(TAG, "Stored watch mood quick-reply: $mood")
@@ -78,6 +84,9 @@ class MobileDataListenerService : WearableListenerService() {
                 tempValues = map.getFloatArray("temp_values") ?: floatArrayOf(),
                 edaTimes   = map.getLongArray("eda_times") ?: longArrayOf(),
                 edaValues  = map.getFloatArray("eda_values") ?: floatArrayOf(),
+                accXValues = map.getFloatArray("acc_x_values") ?: floatArrayOf(),
+                accYValues = map.getFloatArray("acc_y_values") ?: floatArrayOf(),
+                accZValues = map.getFloatArray("acc_z_values") ?: floatArrayOf(),
                 mood       = map.getInt("mood", 0),
             )
             Log.i(TAG, "Received sensor window: HR=${window.hrValues.size} samples")

@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // Sensor capture (health services & samsung health sensor sdk)
     implementation(libs.androidx.health.services.client)

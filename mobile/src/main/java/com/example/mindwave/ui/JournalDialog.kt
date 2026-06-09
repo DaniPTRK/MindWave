@@ -49,7 +49,7 @@ fun JournalDialog(
                      style = MaterialTheme.typography.titleMedium,
                      color = MaterialTheme.colorScheme.primary)
 
-                // Mood slider 1 (calm) – 5 (stressed)
+                // Mood slider 1 (very stressed / sad) – 5 (very happy / calm)
                 Icon(
                     imageVector = moodIcon(mood),
                     contentDescription = moodLabel(mood),
@@ -70,9 +70,9 @@ fun JournalDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Calm", style = MaterialTheme.typography.labelSmall,
+                    Text("Sad", style = MaterialTheme.typography.labelSmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Stressed", style = MaterialTheme.typography.labelSmall,
+                    Text("Happy", style = MaterialTheme.typography.labelSmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
@@ -98,18 +98,18 @@ fun JournalDialog(
 }
 
 private fun moodIcon(mood: Int): ImageVector = when (mood) {
-    1    -> Icons.Filled.SentimentVerySatisfied
-    2    -> Icons.Filled.SentimentSatisfied
+    1    -> Icons.Filled.SentimentVeryDissatisfied
+    2    -> Icons.Filled.SentimentDissatisfied
     3    -> Icons.Filled.SentimentNeutral
-    4    -> Icons.Filled.SentimentDissatisfied
-    else -> Icons.Filled.SentimentVeryDissatisfied
+    4    -> Icons.Filled.SentimentSatisfied
+    else -> Icons.Filled.SentimentVerySatisfied
 }
 
 private fun moodLabel(mood: Int): String = when (mood) {
-    1    -> "Very calm"
-    2    -> "Calm"
+    1    -> "Very stressed"
+    2    -> "Tense"
     3    -> "Neutral"
-    4    -> "Tense"
-    else -> "Very stressed"
+    4    -> "Calm"
+    else -> "Very calm"
 }
 

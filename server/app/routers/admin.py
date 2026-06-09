@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -150,11 +150,24 @@ async def list_audit_log(
 # Account deletion
 @router.delete("/users/me", status_code=204)
 async def delete_own_account(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    """Delete the current user's account and all associated server-side data"""
-    # Audit before del
+    """Delete the current user's account and all associated server-side data.
+    Also blocklists the current access token so it cannot be reused."""
+    # Blocklist the current access token
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            payload = decode_token(auth_header[7:])
+            jti = payload.get("jti", "")
+            if jti:
+                db.add(TokenBlocklist(jti=jti, user_id=user.id))
+        except Exception:
+            pass
+
+    # Audit before delete
     db.add(AuditLog(
         user_id=user.id,
         action="account_delete",

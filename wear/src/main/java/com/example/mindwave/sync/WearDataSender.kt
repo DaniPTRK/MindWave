@@ -29,6 +29,9 @@ import kotlinx.coroutines.tasks.await
  *   - "temp_values"  : DoubleArray
  *   - "eda_times"    : LongArray
  *   - "eda_values"   : DoubleArray
+ *   - "acc_x_values" : FloatArray  (ACCELEROMETER_X, ~25 Hz)
+ *   - "acc_y_values" : FloatArray
+ *   - "acc_z_values" : FloatArray
  *   - "mood"         : Int (0 = no feedback, 1–5 from quick journal)
  */
 object WearDataSender {
@@ -52,6 +55,15 @@ object WearDataSender {
         val eda = ArrayList(SensorForegroundService.edaBuffer).also {
             SensorForegroundService.edaBuffer.clear()
         }
+        val accX = ArrayList(SensorForegroundService.accXBuffer).also {
+            SensorForegroundService.accXBuffer.clear()
+        }
+        val accY = ArrayList(SensorForegroundService.accYBuffer).also {
+            SensorForegroundService.accYBuffer.clear()
+        }
+        val accZ = ArrayList(SensorForegroundService.accZBuffer).also {
+            SensorForegroundService.accZBuffer.clear()
+        }
 
         if (hr.isEmpty() && temp.isEmpty() && eda.isEmpty()) {
             Log.d(TAG, "No sensor data to send")
@@ -66,13 +78,17 @@ object WearDataSender {
             dataMap.putFloatArray("temp_values", temp.map { it.value.toFloat() }.toFloatArray())
             dataMap.putLongArray("eda_times", eda.map { it.epochMs }.toLongArray())
             dataMap.putFloatArray("eda_values", eda.map { it.value.toFloat() }.toFloatArray())
+            dataMap.putFloatArray("acc_x_values", accX.map { it.value.toFloat() }.toFloatArray())
+            dataMap.putFloatArray("acc_y_values", accY.map { it.value.toFloat() }.toFloatArray())
+            dataMap.putFloatArray("acc_z_values", accZ.map { it.value.toFloat() }.toFloatArray())
             dataMap.putBoolean("eda_available", SensorForegroundService.edaAvailable.value)
+            dataMap.putBoolean("acc_available", SensorForegroundService.accAvailable.value)
             dataMap.putInt("mood", userMood)
             dataMap.putLong("_nonce", System.nanoTime())
         }
         request.setUrgent()
 
-        sendWithRetry(dataClient, request, "window HR=${hr.size} TEMP=${temp.size} EDA=${eda.size}")
+        sendWithRetry(dataClient, request, "window HR=${hr.size} TEMP=${temp.size} EDA=${eda.size} ACC=${accX.size}")
     }
 
     /**

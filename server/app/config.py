@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     fl_service_token: str = Field(..., alias="FL_SERVICE_TOKEN")
     fl_num_rounds: int = Field(default=3, alias="FL_NUM_ROUNDS")
     api_base_url: str = Field(default="http://api:8000", alias="API_BASE_URL")
+    
+    # Minimum clients needed before HTTP-based FedAvg fires (1 = single-device demo)
+    fl_min_clients_for_aggregation: int = Field(default=1, alias="FL_MIN_CLIENTS_FOR_AGGREGATION")
 
     # storage
     models_dir: str = Field(default="/models")

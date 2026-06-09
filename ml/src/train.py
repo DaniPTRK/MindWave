@@ -23,7 +23,7 @@ import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 
-from .config import LABEL_NAMES, MODELS_DIR, PROCESSED_DIR, set_global_seed
+from .config import LABEL_CONFIGS, LABEL_NAMES, MODELS_DIR, PROCESSED_DIR, set_global_seed
 from .evaluate import compare_keras_vs_tflite, metrics_dict
 from .model import build_lstm
 from .tflite_export import convert_float, convert_int8, run_tflite
@@ -61,6 +61,25 @@ def maybe_binarize(y: np.ndarray, binary: bool):
         return y, LABEL_NAMES
     y_bin = (y == 1).astype(np.int64)
     return y_bin, {0: "non_stress", 1: "stress"}
+
+
+def apply_label_config(X: np.ndarray, y: np.ndarray, subject_ids: np.ndarray, name: str):
+    """Apply a named binary label configuration.
+
+    Operates on the already-remapped npz labels {0=baseline, 1=stress,
+    2=amusement}. Returns filtered (X, y, subject_ids, label_names).
+    """
+    from .config import LABEL_CONFIGS
+
+    cfg = LABEL_CONFIGS[name]
+    if name == "binary_strict":
+        mask = np.isin(y, [0, 1])
+        X, y, subject_ids = X[mask], y[mask], subject_ids[mask]
+        y = y.astype(np.int64)
+    else:
+        y = (y == 1).astype(np.int64)
+    print(f"Label config '{name}': {cfg['description']} -> X={X.shape}")
+    return X, y, subject_ids, {0: "non_stress", 1: "stress"}
 
 
 # Time-series augmentation
@@ -224,6 +243,9 @@ def main() -> None:
     p.add_argument("--mode", choices=["holdout", "loso"], default="holdout")
     p.add_argument("--binary", action="store_true",
                    help="Remap to {0=non-stress, 1=stress}.")
+    p.add_argument("--label-config", choices=list(LABEL_CONFIGS.keys()), default=None,
+                   help="Named binary label configuration for the ablation study "
+                        "(overrides --binary).")
     p.add_argument("--epochs", type=int, default=60)
     p.add_argument("--batch", type=int, default=64)
     p.add_argument("--holdout-subjects", nargs="+", default=list(DEFAULT_HOLDOUT_SUBJECTS))
@@ -233,7 +255,12 @@ def main() -> None:
 
     set_global_seed()
     X, y, subject_ids, feature_names = load_npz(Path(args.data))
-    y, label_names = maybe_binarize(y, args.binary)
+    if args.label_config is not None:
+        X, y, subject_ids, label_names = apply_label_config(
+            X, y, subject_ids, args.label_config
+        )
+    else:
+        y, label_names = maybe_binarize(y, args.binary)
     n_classes = len(label_names)
     print(f"Loaded X={X.shape} y={y.shape} subjects={len(np.unique(subject_ids))} "
           f"classes={n_classes}")

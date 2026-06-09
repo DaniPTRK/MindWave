@@ -30,6 +30,21 @@ KEEP_LABELS = (1, 2, 3)
 LABEL_REMAP = {1: 0, 2: 1, 3: 2}
 LABEL_NAMES = {0: "baseline", 1: "stress", 2: "amusement"}
 
+# Binary label configurations
+# `keep` are the raw WESAD labels retained; `map` remaps them to {0, 1}
+LABEL_CONFIGS = {
+    "binary_strict": {
+        "keep": {1, 2},
+        "map": {1: 0, 2: 1},
+        "description": "Baseline vs. stress only (recommended)",
+    },
+    "binary_with_amusement": {
+        "keep": {1, 2, 3},
+        "map": {1: 0, 2: 1, 3: 0},
+        "description": "Baseline + amusement vs. stress (ablation)",
+    },
+}
+
 # Subjects shipped with WESAD - S12 is missing
 SUBJECTS = [f"S{i}" for i in range(2, 18) if i != 12]
 

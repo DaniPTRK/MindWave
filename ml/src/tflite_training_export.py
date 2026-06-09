@@ -153,5 +153,32 @@ def export_trainable_tflite(
     return out_path
 
 
-__all__ = ["TrainableModule", "export_trainable_tflite"]
+def export_scaler_params(
+    scaler,
+    feature_names: list[str],
+    output_path: str | Path = MODELS_DIR / "scaler_params.json",
+) -> Path:
+    """Export a fitted scikit-learn StandardScaler to JSON for on-device use.
+
+    The Android `ScalerNormalizer` reads this file from assets and applies the
+    same z-score standardisation that was used during training, so on-device
+    features match the distribution the LSTM expects.
+    """
+    import json
+
+    output_path = Path(output_path)
+    params = {
+        "mean": scaler.mean_.tolist(),
+        "scale": scaler.scale_.tolist(),
+        "n_features": int(scaler.n_features_in_),
+        "feature_names": list(feature_names),
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w") as f:
+        json.dump(params, f, indent=2)
+    print(f"Scaler params ({params['n_features']} features) at {output_path}")
+    return output_path
+
+
+__all__ = ["TrainableModule", "export_trainable_tflite", "export_scaler_params"]
 

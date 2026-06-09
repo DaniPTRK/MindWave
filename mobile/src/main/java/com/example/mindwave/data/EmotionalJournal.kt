@@ -19,13 +19,14 @@ import androidx.room.PrimaryKey
         childColumns = ["readingId"],
         onDelete = ForeignKey.SET_NULL
     )],
-    indices = [Index("readingId")]
+    indices = [Index("readingId"), Index("userEmail")]
 )
 data class EmotionalJournal(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val readingId: Long? = null,
     val timestamp: Long,
-    val userMood: Int, // 1 (very calm) – 5 (very stressed)
+    val userMood: Int, // 1 (very stressed / sad) – 5 (very happy / calm)
     val note: String = "",
-    val tags: String = "" // comma separated, for ex "work,meeting,tired"
+    val tags: String = "", // comma separated, for ex "work,meeting,tired"
+    val userEmail: String = "", // owner, entries are only shown to the account that created them
 )
