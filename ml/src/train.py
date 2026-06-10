@@ -60,7 +60,7 @@ def maybe_binarize(y: np.ndarray, binary: bool):
     if not binary:
         return y, LABEL_NAMES
     y_bin = (y == 1).astype(np.int64)
-    return y_bin, {0: "non_stress", 1: "stress"}
+    return y_bin, LABEL_NAMES
 
 
 def apply_label_config(X: np.ndarray, y: np.ndarray, subject_ids: np.ndarray, name: str):
@@ -212,6 +212,8 @@ def train_final_and_export(X, y, n_classes: int, epochs: int, batch_size: int,
     )
 
     joblib.dump(scaler, MODELS_DIR / "scaler.pkl")
+    from .tflite_training_export import export_scaler_params
+    export_scaler_params(scaler, list(map(str, feature_names)), MODELS_DIR / "scaler_params.json")
     (MODELS_DIR / "label_map.json").write_text(
         json.dumps({str(k): v for k, v in label_names.items()}, indent=2)
     )

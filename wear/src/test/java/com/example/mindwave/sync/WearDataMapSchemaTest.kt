@@ -128,7 +128,7 @@ class WearDataMapSchemaTest {
         val now = System.currentTimeMillis()
         assertTrue("Timestamp should be recent", ts <= now && ts > now - 60_000)
     }
-    
+
     private fun simulateWindowDataMap(
         hrCount: Int = 60,
         tempCount: Int = 60,

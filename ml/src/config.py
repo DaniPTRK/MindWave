@@ -26,9 +26,11 @@ LABEL_FS = 700
 # Original WESAD label scheme:
 #   0 = transient, 1 = baseline, 2 = stress,
 #   3 = amusement, 4 = meditation, 5/6/7 = should be ignored
-KEEP_LABELS = (1, 2, 3)
-LABEL_REMAP = {1: 0, 2: 1, 3: 2}
-LABEL_NAMES = {0: "baseline", 1: "stress", 2: "amusement"}
+# Binary classification: only baseline (1) and stress (2) are kept.
+# Amusement (3) is excluded. Baseline → 0 = "normal", Stress → 1 = "stress".
+KEEP_LABELS = (1, 2)
+LABEL_REMAP = {1: 0, 2: 1}
+LABEL_NAMES = {0: "normal", 1: "stress"}
 
 # Binary label configurations
 # `keep` are the raw WESAD labels retained; `map` remaps them to {0, 1}
