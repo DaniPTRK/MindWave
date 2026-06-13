@@ -7,6 +7,9 @@ import org.junit.Test
  * Test the DataMap wire format schema that WearDataSender uses.
  * This verifies the contract between the watch and phone without
  * requiring a real Wearable Data Layer connection.
+ *
+ * The phone-side MobileDataListenerService parses these exact keys;
+ * any mismatch breaks the inference pipeline silently.
  */
 class WearDataMapSchemaTest {
 
@@ -27,6 +30,8 @@ class WearDataMapSchemaTest {
         "mood",           // Int: 0=no feedback, 1-5 from quick journal
         "_nonce",         // Long: ensures DataLayer treats each put as unique
     )
+
+    // Expected keys for a mood-only message
     private val expectedMoodKeys = listOf(
         "timestamp",
         "mood",
@@ -36,6 +41,7 @@ class WearDataMapSchemaTest {
 
     @Test
     fun `window DataMap has all required keys`() {
+        // Simulate what WearDataSender.sendWindow() would produce
         val dataMap = simulateWindowDataMap(
             hrCount = 60, tempCount = 60, edaCount = 60, accCount = 1500
         )
@@ -128,6 +134,8 @@ class WearDataMapSchemaTest {
         val now = System.currentTimeMillis()
         assertTrue("Timestamp should be recent", ts <= now && ts > now - 60_000)
     }
+
+    // ── Helpers ──────────────────────────────────────────────────────
 
     private fun simulateWindowDataMap(
         hrCount: Int = 60,

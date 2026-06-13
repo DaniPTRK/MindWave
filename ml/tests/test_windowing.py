@@ -1,4 +1,4 @@
-"""Test windowing logic"""
+"""Test windowing logic: 60s windows, 15s stride, 12 sub-windows, label purity."""
 from __future__ import annotations
 
 import numpy as np
@@ -66,7 +66,7 @@ class TestWindowLabel:
         assert purity == 1.0
 
     def test_impure_window_below_threshold(self):
-        # 80% label=1, 20% label=2 => purity = 0.8 < 0.9 threshold
+        # 80% label=1, 20% label=2 → purity = 0.8 < 0.9 threshold
         labels = np.ones(700 * 60, dtype=np.int32)
         labels[int(700 * 60 * 0.8):] = 2
         label, purity = _window_label(labels, 0.0, 60.0)
@@ -74,7 +74,7 @@ class TestWindowLabel:
         assert purity < LABEL_PURITY_THRESHOLD
 
     def test_mixed_just_above_threshold(self):
-        # 92% label=2, 8% label=1 => passes threshold
+        # 92% label=2, 8% label=1 → passes threshold
         n = 700 * 60
         labels = np.full(n, 2, dtype=np.int32)
         labels[:int(n * 0.08)] = 1
@@ -113,10 +113,9 @@ class TestWindowsFromSubject:
         )
 
     def test_output_shape(self):
-        """120s session with stride=15 => expect 4 windows"""
+        """120s session with stride=15 → expect 4 windows (0,15,30,45,60 don't all fit)."""
         record = self._make_dummy_record(duration_s=120, label_value=1)
         X, y = windows_from_subject(record)
-
         # At least some windows should be produced
         assert X.ndim == 3
         assert X.shape[1] == N_SUBWINDOWS  # 12
@@ -124,7 +123,7 @@ class TestWindowsFromSubject:
         assert y.shape[0] == X.shape[0]
 
     def test_discarded_label(self):
-        """Labels not in KEEP_LABELS (e.g., 0=transient) => no windows."""
+        """Labels not in KEEP_LABELS (e.g., 0=transient) → no windows."""
         record = self._make_dummy_record(duration_s=120, label_value=0)
         X, y = windows_from_subject(record)
         assert X.shape[0] == 0

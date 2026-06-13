@@ -1,4 +1,4 @@
-"""Test FL simulation, such as weight aggregation and client-server interaction."""
+"""Test FL simulation: clients produce valid weight updates, FedAvg converges."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,14 +28,16 @@ class TestFLSimulation:
 
     def test_fedavg_weight_shapes_consistent(self, sample_data):
         """All client weight lists must have the same structure for FedAvg."""
+        # Simulate: each client produces a flat list of weight arrays
         client_weights = []
         for X, y in sample_data:
-            # Simulate params as a list of random weight-like tensors
+            # Simulate "parameters": a list of random weight-like tensors
             w = [np.random.randn(23, 64).astype(np.float32),
                  np.random.randn(64,).astype(np.float32),
                  np.random.randn(64, 2).astype(np.float32)]
             client_weights.append(w)
 
+        # All clients must have same number of weight tensors
         n_tensors = len(client_weights[0])
         for cw in client_weights:
             assert len(cw) == n_tensors
@@ -60,13 +62,16 @@ class TestFLSimulation:
             for i in range(len(client_weights[0]))
         ]
 
-        # check mean
+        # Verify it's the mean
         for i in range(len(aggregated)):
             expected = sum(cw[i] for cw in client_weights) / n_clients
             np.testing.assert_allclose(aggregated[i], expected, rtol=1e-5)
 
     def test_no_raw_data_in_payload(self, sample_data):
-        """Privacy boundary test, the weights mustn't contain any raw data."""
+        """
+        Privacy boundary test: the 'upload payload' (weights) must NOT contain
+        any raw feature tensors or labels.
+        """
         X, y = sample_data[0]
 
         # Simulate weight extraction
@@ -96,7 +101,7 @@ class TestFLSimulation:
         for _ in range(n_rounds):
             client_updates = []
             for _ in range(n_clients):
-                # Peturb global weights for simulation
+                # Each client slightly perturbs global weights (simulates training)
                 local = [gw + 0.01 * rng.standard_normal(gw.shape).astype(np.float32)
                          for gw in global_weights]
                 client_updates.append(local)
@@ -107,7 +112,7 @@ class TestFLSimulation:
                 for i in range(len(global_weights))
             ]
 
-        # Global weights should have bounded norm
+        # Global weights should have bounded norm (not exploding)
         for gw in global_weights:
             assert np.linalg.norm(gw) < 1000.0
 

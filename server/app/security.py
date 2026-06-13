@@ -16,13 +16,14 @@ from .config import Settings, get_settings
 from .database import get_db
 from .models import TokenBlocklist, User, UserRole
 
-# bcrypt for password hashing, slow by design to prevent brute-force
+# bcrypt for password hashing — slow on purpose (~250 ms / verify).
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# OAuth2 scheme
+# OAuth2 scheme — Swagger UI shows a "Authorize" lock icon wired to /auth/login.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
+# ---------------------------------------------------------------------------
 def hash_password(plain: str) -> str:
     return pwd_context.hash(plain)
 
@@ -31,6 +32,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
+# ---------------------------------------------------------------------------
 def create_access_token(
     sub: int,
     role: UserRole,
@@ -87,6 +89,7 @@ def decode_token(token: str, settings: Settings | None = None) -> dict:
         )
 
 
+# ---------------------------------------------------------------------------
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -118,8 +121,10 @@ def require_role(*roles: UserRole):
     return _checker
 
 
-# FL service-to-service auth, requires a special header with a secret token.
+# ---------------------------------------------------------------------------
+# Service-to-service auth for the Flower aggregator → API call.
 # Deliberately separate from user JWTs.
+# ---------------------------------------------------------------------------
 def require_fl_service_token(
     x_fl_service_token: Annotated[str | None, Header()] = None,
     settings: Settings = Depends(get_settings),
@@ -132,3 +137,5 @@ def require_fl_service_token(
             status.HTTP_401_UNAUTHORIZED,
             "Invalid or missing X-FL-Service-Token header",
         )
+
+

@@ -1,0 +1,5 @@
+operation,reps,mean_ms,p50_ms,p95_ms,p99_ms,max_ms
+TFLite infer (batch=1),200,0.069,0.068,0.078,0.104,0.162
+XAI vanilla-gradient,200,163.494,144.267,246.72,319.996,1853.091
+Feature extraction (60s raw → 12×23 tensor),50,64.3,58.5,99.4,144.0,146.4
+End-to-end alert (feat→scale→infer→threshold),50,70.8,60.1,106.6,222.1,278.7

@@ -1,0 +1,25 @@
+artifact,kind,description
+results\loso_per_subject.csv,table,Per-subject LOSO metrics + mean/std summary
+plots\loso_subject_accuracy.png,plot,Per-subject LOSO accuracy & macro-F1 bar chart
+results\holdout_metrics.csv,table,Hold-out and LOSO evaluation including FPR/FNR
+results\threshold_analysis.csv,table,"In-sample precision/recall/F1 vs alert threshold (ROC-AUC=1.0000, PR-AUC=1.0000)"
+plots\probability_separation.png,plot,Histogram of P(stress) split by true label
+plots\threshold_curve.png,plot,Precision/recall/F1 vs decision threshold
+plots\confusion_matrix.png,plot,Confusion matrix at production threshold 0.85
+results\sensor_ablation.csv,table,Accuracy / stress-recall when each sensor group is masked
+plots\sensor_ablation.png,plot,Accuracy drop when each sensor modality is masked
+results\model_parity.csv,table,Keras vs TFLite/INT8 probability delta and classification agreement @0.85
+plots\keras_vs_tflite_delta.png,plot,Probability-delta histogram (Keras vs TFLite/INT8)
+results\scaler_parity.csv,table,Per-feature scaler parity: Python pkl vs Android JSON — PASS
+results\latency_benchmark.csv,table,"Desktop CPU latency (ms) for TFLite inference and vanilla-gradient XAI, p50/p95/p99"
+plots\latency_distribution.png,plot,Boxplot of per-window inference and XAI latency
+results\model_sizes.csv,table,Model file sizes and in-memory weight budget
+results\fl_rounds.csv,table,Federated-learning per-round fit/eval accuracy and loss
+plots\fl_convergence.png,plot,Federated-learning accuracy and loss per round
+results\wearable_unit_tests.csv,table,Android unit-test results parsed from Gradle JUnit XML (mobile + wear)
+results\fl_centralised_vs_fl.csv,table,Centralised vs FL accuracy gap (LOSO vs FL round 3)
+results\fl_comm_cost.csv,table,FL communication cost per client per round (float32 and potential int8 encoding)
+results\privacy_payload_audit.csv,table,Network-boundary field classification + server raw-signal keyword scan
+results\security_tests.csv,table,"Privacy and security check summary: k-anon, auth/role tests, payload audit"
+results\db_write_latency.csv,table,HTTP→FastAPI→SQLAlchemy→PostgreSQL write latency per request (Docker Compose local)
+results\MANIFEST.csv,table,Index of all generated evaluation artifacts

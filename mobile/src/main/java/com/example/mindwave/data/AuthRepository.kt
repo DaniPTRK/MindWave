@@ -51,8 +51,8 @@ class AuthRepository(context: Context) {
         .apply()
 
     /**
-     * Decode JWT to check expiry.
-     * Returns payload as JSONObject or null if invalid
+     * Decode JWT without verification (client-side only, for expiry check).
+     * Returns payload as JSONObject or null if invalid.
      */
     private fun decodeJwtPayload(token: String): JSONObject? {
         return try {
@@ -66,10 +66,10 @@ class AuthRepository(context: Context) {
     }
 
     /**
-     * Check if the current access token is expired or will expire within bufferMs.
+     * Check if the current access token is expired or will expire within [bufferMs].
      * Returns true if token should be refreshed.
      */
-    private fun isTokenExpired(bufferMs: Long = 180_000L): Boolean {
+    private fun isTokenExpired(bufferMs: Long = 60_000L): Boolean {
         val token = getToken() ?: return true
         val payload = decodeJwtPayload(token) ?: return true
         val expiryTime = payload.optLong("exp", 0) * 1000  // JWT exp is in seconds
@@ -78,7 +78,8 @@ class AuthRepository(context: Context) {
 
     /**
      * Refresh the access token using the stored refresh token.
-     * On success, update both tokens, otherwise clear them.
+     * On success, updates both access_token and refresh_token.
+     * On failure, clears both (forcing re-login).
      */
     suspend fun refreshToken(): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -101,6 +102,7 @@ class AuthRepository(context: Context) {
 
                 if (conn.responseCode != HttpURLConnection.HTTP_OK) {
                     val errBody = conn.errorStream?.bufferedReader()?.readText().orEmpty()
+                    // If refresh fails, clear tokens (force re-login)
                     logout()
                     throw Exception(parseDetail(errBody, conn.responseCode))
                 }

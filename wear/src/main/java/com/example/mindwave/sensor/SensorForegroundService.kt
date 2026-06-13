@@ -190,6 +190,13 @@ class SensorForegroundService : Service() {
             while (true) {
                 delay(60_000L)
                 try {
+                    // Check if phone is logged in before sending
+                    if (!com.example.mindwave.data.PhoneAuthState.isPhoneLoggedIn(applicationContext)) {
+                        Log.i(TAG, "Phone not logged in — skipping sensor data send (buffers will accumulate)")
+                        // Note: buffers will grow until phone logs in again
+                        // Could add buffer size limit if needed
+                        continue
+                    }
                     com.example.mindwave.sync.WearDataSender.sendWindow(applicationContext)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to send window: ${e.message}")

@@ -1,4 +1,7 @@
-""" Config file for server's tests, uses a separate sqlite database """
+"""Shared fixtures for the MindWave server test suite.
+
+Uses an in-memory SQLite database to isolate tests from production.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -14,27 +17,23 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-# Set required env vars
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["DATABASE_URL_SYNC"] = "sqlite:///:memory:"
-os.environ["SECRET_KEY"] = "test-secret-key-for-ci"
-os.environ["FL_SERVICE_TOKEN"] = "test-fl-token"
-os.environ["K_ANON_THRESHOLD"] = "5"
-os.environ["ADMIN_SEED_EMAIL"] = "admin@example.com"
-os.environ["ADMIN_SEED_PASSWORD"] = "Admin1234"
+# Set required env vars BEFORE importing the app
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("DATABASE_URL_SYNC", "sqlite:///:memory:")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci")
+os.environ.setdefault("FL_SERVICE_TOKEN", "test-fl-token")
+os.environ.setdefault("K_ANON_THRESHOLD", "5")
+os.environ.setdefault("ADMIN_SEED_EMAIL", "admin@test.local")
+os.environ.setdefault("ADMIN_SEED_PASSWORD", "Admin1234")
 
 from app.database import Base, get_db
 from app.main import app
 from app.models import User, UserRole
 from app.security import hash_password
-from app.config import get_settings
-import app.main as _app_main
 
 # In-memory test engine
 TEST_ENGINE = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
 TestSessionLocal = async_sessionmaker(bind=TEST_ENGINE, class_=AsyncSession, expire_on_commit=False)
-
-_app_main.AsyncSessionLocal = TestSessionLocal
 
 
 async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -67,7 +66,7 @@ async def admin_user() -> User:
     """Seed an admin user and return the ORM object."""
     async with TestSessionLocal() as db:
         user = User(
-            email="admin@example.com",
+            email="admin@test.local",
             hashed_password=hash_password("Admin1234"),
             role=UserRole.admin,
         )
@@ -82,7 +81,7 @@ async def normal_user() -> User:
     """Seed a normal user."""
     async with TestSessionLocal() as db:
         user = User(
-            email="user@example.com",
+            email="user@test.local",
             hashed_password=hash_password("User12345"),
             role=UserRole.user,
             organization_id=1,
@@ -97,7 +96,7 @@ async def normal_user() -> User:
 async def admin_token(client: AsyncClient, admin_user: User) -> str:
     """Login as admin and return the access token."""
     resp = await client.post("/auth/login", data={
-        "username": "admin@example.com",
+        "username": "admin@test.local",
         "password": "Admin1234",
     })
     assert resp.status_code == 200
@@ -108,7 +107,7 @@ async def admin_token(client: AsyncClient, admin_user: User) -> str:
 async def user_token(client: AsyncClient, normal_user: User) -> str:
     """Login as normal user and return the access token."""
     resp = await client.post("/auth/login", data={
-        "username": "user@example.com",
+        "username": "user@test.local",
         "password": "User12345",
     })
     assert resp.status_code == 200

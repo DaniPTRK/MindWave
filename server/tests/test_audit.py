@@ -1,4 +1,4 @@
-"""Test audit logging"""
+"""Test audit logging: state-changing requests should be logged."""
 from __future__ import annotations
 
 import pytest
@@ -15,6 +15,7 @@ class TestAuditLogging:
 
     async def test_post_creates_audit_entry(self, client: AsyncClient, admin_token: str):
         """A POST request should produce an audit log entry."""
+        # Trigger a POST (register a user via admin endpoint)
         await client.post("/auth/register", json={
             "email": "audit-test@example.com",
             "password": "AuditTest1",
@@ -58,19 +59,21 @@ class TestAuditLogging:
                 select(AuditLog).where(AuditLog.resource == "/auth/register")
             )
             logs = result.scalars().all()
+            # At least one entry should have the admin's user_id
             assert any(log.user_id == admin_user.id for log in logs)
 
     async def test_unauthenticated_post_still_logged(self, client: AsyncClient):
-        """Faile posts should have audit"""
+        """Even failed (401) POSTs should have an audit entry with user_id=None."""
         await client.post("/auth/register", json={
             "email": "noauth@example.com",
             "password": "NoAuth123",
-        }) 
+        })  # This will fail with 401
 
         async with TestSessionLocal() as db:
             result = await db.execute(
                 select(AuditLog).where(AuditLog.resource == "/auth/register")
             )
             logs = result.scalars().all()
+            # Should have at least one log with user_id=None
             assert any(log.user_id is None for log in logs)
 

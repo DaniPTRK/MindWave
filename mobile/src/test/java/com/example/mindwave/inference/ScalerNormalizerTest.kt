@@ -4,7 +4,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Unit test for ScalerNormalizer, verifies standardisation logic.
+ * Unit test for ScalerNormalizer — verifies standardisation logic
+ * without requiring Android Context (we test the normalize() math directly).
+ *
+ * The actual fromAssets() path is tested in instrumented tests.
  */
 class ScalerNormalizerTest {
 
@@ -25,6 +28,7 @@ class ScalerNormalizerTest {
 
     @Test
     fun `normalize produces correct z-scores`() {
+        // 3-feature scaler: mean=[1,2,3], scale=[1,2,0.5]
         val mean = floatArrayOf(1f, 2f, 3f)
         val scale = floatArrayOf(1f, 2f, 0.5f)
         val scaler = createScaler(mean, scale)
@@ -33,6 +37,7 @@ class ScalerNormalizerTest {
         val input = floatArrayOf(2f, 4f, 3.5f)
         val result = invokeNormalize(scaler, input)
 
+        // Expected: (2-1)/1=1, (4-2)/2=1, (3.5-3)/0.5=1
         assertEquals(1.0f, result[0], 1e-6f)
         assertEquals(1.0f, result[1], 1e-6f)
         assertEquals(1.0f, result[2], 1e-6f)
@@ -41,12 +46,13 @@ class ScalerNormalizerTest {
     @Test
     fun `normalize handles zero scale gracefully`() {
         val mean = floatArrayOf(5f, 10f)
-        val scale = floatArrayOf(0f, 2f)
+        val scale = floatArrayOf(0f, 2f)  // zero scale for feature 0
         val scaler = createScaler(mean, scale)
 
         val input = floatArrayOf(7f, 14f)
         val result = invokeNormalize(scaler, input)
 
+        // When scale=0, should use 1 → (7-5)/1 = 2
         assertEquals(2.0f, result[0], 1e-6f)
         assertEquals(2.0f, result[1], 1e-6f)
     }
@@ -75,6 +81,7 @@ class ScalerNormalizerTest {
         val scale = floatArrayOf(1f, 1f, 1f)
         val scaler = createScaler(mean, scale)
 
+        // 5 features doesn't divide evenly by 3 → should return input unchanged
         val input = floatArrayOf(10f, 20f, 30f, 40f, 50f)
         val result = invokeNormalize(scaler, input)
 

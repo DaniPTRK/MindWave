@@ -35,8 +35,8 @@ import com.example.mindwave.ui.auth.RegisterScreen
 import kotlinx.coroutines.launch
 
 /**
- * Root composable: holds the navhost, the bottom navigation bar, and the
- * auth gate (start at Login when logged-out, Home otherwise).
+ * Root composable: NavHost + bottom bar + auth gate.
+ * Bottom nav: Today · Insights · History · Journal · Profile
  */
 @Composable
 fun MindWaveApp() {
@@ -52,7 +52,6 @@ fun MindWaveApp() {
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = BottomTab.entries.any { it.screen.route == currentRoute }
 
-    // Snackbar state and helper function to show messages from anywhere in the graph
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     fun snack(msg: String) { scope.launch { snackbarHostState.showSnackbar(msg) } }
@@ -98,7 +97,7 @@ fun MindWaveApp() {
             startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
         ) {
-            // Auth flow
+            // ── Auth ──────────────────────────────────────────────────────────────
             composable(Screen.Login.route) {
                 LoginScreen(
                     vm = authViewModel,
@@ -122,7 +121,7 @@ fun MindWaveApp() {
                 )
             }
 
-            // Dashboard
+            // ── Today tab ─────────────────────────────────────────────────────────
             composable(Screen.Today.route) {
                 val latest by dashViewModel.latestReading.collectAsStateWithLifecycle()
                 val xai    by dashViewModel.xaiExplanations.collectAsStateWithLifecycle()
@@ -147,13 +146,13 @@ fun MindWaveApp() {
                         onSave = { mood, note ->
                             dashViewModel.saveJournal(mood, note)
                             showJournal = false
-                            snack("Journal entry saved ")
+                            snack("Journal entry saved ✓")
                         },
                     )
                 }
             }
 
-            // Insights tab
+            // ── Insights tab ──────────────────────────────────────────────────────
             composable(Screen.Insights.route) {
                 val latest by dashViewModel.latestReading.collectAsStateWithLifecycle()
                 val xai    by dashViewModel.xaiExplanations.collectAsStateWithLifecycle()
@@ -166,7 +165,7 @@ fun MindWaveApp() {
                 )
             }
 
-            // Stress detail from notification
+            // ── StressDetail (secondary, deep-link from notification or tap) ──────
             composable(
                 route = Screen.StressDetail.route,
                 arguments = listOf(navArgument(Screen.StressDetail.ARG_READING_ID) {
@@ -183,18 +182,18 @@ fun MindWaveApp() {
                     onDismiss         = { navController.popBackStack() },
                     onJournalEntry    = { mood, note ->
                         dashViewModel.saveJournal(mood, note)
-                        snack("Reading documented ")
+                        snack("Reading documented ✓")
                     },
                 )
             }
 
-            // History tab
+            // ── History tab ───────────────────────────────────────────────────────
             composable(Screen.History.route) {
                 val readings by dashViewModel.allReadings.collectAsStateWithLifecycle()
                 HistoryScreen(readings = readings)
             }
 
-            // Journal tab
+            // ── Journal tab ───────────────────────────────────────────────────────
             composable(Screen.Journal.route) {
                 val entries by dashViewModel.journalEntries.collectAsStateWithLifecycle()
                 var showJournal  by remember { mutableStateOf(false) }
@@ -216,7 +215,7 @@ fun MindWaveApp() {
                         onSave = { mood, note ->
                             dashViewModel.saveJournal(mood, note)
                             showJournal = false
-                            snack("Journal entry saved")
+                            snack("Journal entry saved ✓")
                         },
                     )
                 }
@@ -230,13 +229,13 @@ fun MindWaveApp() {
                         onSave = { mood, note ->
                             dashViewModel.updateJournal(entry, mood, note)
                             editingEntry = null
-                            snack("Entry updated ")
+                            snack("Entry updated ✓")
                         },
                     )
                 }
             }
 
-            // profile
+            // ── Profile tab ───────────────────────────────────────────────────────
             composable(Screen.Profile.route) {
                 ProfileScreen(
                     onLogout = {
@@ -249,12 +248,12 @@ fun MindWaveApp() {
                 )
             }
 
-            // breathing ex
+            // ── Secondary: Breathing ──────────────────────────────────────────────
             composable(Screen.Breathing.route) {
                 BreathingExerciseScreen(onClose = { navController.popBackStack() })
             }
 
-            // sensor status
+            // ── Secondary: Sensor Status ──────────────────────────────────────────
             composable(Screen.SensorStatus.route) {
                 val latest by dashViewModel.latestReading.collectAsStateWithLifecycle()
                 SensorStatusScreen(

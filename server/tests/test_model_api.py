@@ -49,7 +49,7 @@ class TestModelDownload:
 
 @pytest.mark.asyncio
 class TestRoundSummary:
-    """POST /model/round_summary, called by Flower aggregator."""
+    """POST /model/round_summary — called by Flower aggregator."""
 
     async def test_valid_round_summary(self, client: AsyncClient):
         resp = await client.post("/model/round_summary", json={
@@ -94,7 +94,7 @@ class TestRoundSummary:
 
 @pytest.mark.asyncio
 class TestFLWeightSubmission:
-    """POST /model/fl/submit-weights, mobile HTTP-based FL."""
+    """POST /model/fl/submit-weights — mobile HTTP-based FL."""
 
     async def test_empty_file_rejected(self, client: AsyncClient, admin_token: str):
         import io

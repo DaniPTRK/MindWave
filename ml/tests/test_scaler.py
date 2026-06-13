@@ -1,4 +1,4 @@
-"""Test StandardScaler"""
+"""Test scikit-learn StandardScaler: load, transform shape, inverse consistency."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,7 +18,7 @@ def scaler():
     """Load the fitted scaler from disk."""
     import joblib
     if not SCALER_PKL.exists():
-        pytest.skip("scaler.pkl not found, run training first")
+        pytest.skip("scaler.pkl not found — run training first")
     return joblib.load(SCALER_PKL)
 
 
@@ -27,7 +27,7 @@ def scaler_params():
     """Load JSON scaler params (used by Android)."""
     import json
     if not SCALER_JSON.exists():
-        pytest.skip("scaler_params.json not found, export it first")
+        pytest.skip("scaler_params.json not found — export it first")
     with open(SCALER_JSON) as f:
         return json.load(f)
 
@@ -50,7 +50,7 @@ class TestScalerPKL:
         assert out.shape == (10, N_FEATURES)
 
     def test_inverse_consistency(self, scaler):
-        """transform, inverse_transform should recover original."""
+        """transform → inverse_transform should recover original."""
         X = np.random.default_rng(42).standard_normal((5, N_FEATURES)).astype(np.float64)
         recovered = scaler.inverse_transform(scaler.transform(X))
         np.testing.assert_allclose(recovered, X, rtol=1e-5)

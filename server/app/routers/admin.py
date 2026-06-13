@@ -1,9 +1,12 @@
-"""Admin endpoints: org management, role promotion, audit log, account deletion"""
+"""Admin endpoints: org management, role promotion, audit log, account deletion.
+
+Addresses Gaps 1, 4, 5, 7, 8 from the auth gap list.
+"""
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,9 +29,13 @@ from ..security import (
 
 router = APIRouter(tags=["admin"])
 
+
+# ---------------------------------------------------------------------------
 # Schemas
+# ---------------------------------------------------------------------------
 class OrgCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+
 
 class OrgOut(BaseModel):
     id: int
@@ -37,17 +44,21 @@ class OrgOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class RoleUpdate(BaseModel):
     role: UserRole
 
+
 class RefreshRequest(BaseModel):
     refresh_token: str
+
 
 class TokenPairOut(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+
 
 class AuditLogOut(BaseModel):
     id: int
@@ -60,14 +71,17 @@ class AuditLogOut(BaseModel):
     class Config:
         from_attributes = True
 
-# Org creation
+
+# ---------------------------------------------------------------------------
+# Gap 1 — Org creation
+# ---------------------------------------------------------------------------
 @router.post("/orgs", response_model=OrgOut, status_code=201)
 async def create_organization(
     payload: OrgCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(require_role(UserRole.admin))],
 ):
-    """Create a new organization (admin only)"""
+    """Create a new organization (admin only)."""
     existing = await db.execute(
         select(Organization).where(Organization.name == payload.name)
     )
@@ -79,7 +93,10 @@ async def create_organization(
     await db.refresh(org)
     return org
 
-# Auth refresh
+
+# ---------------------------------------------------------------------------
+# Gap 4 — Token refresh
+# ---------------------------------------------------------------------------
 @router.post("/auth/refresh", response_model=TokenPairOut)
 async def refresh_token(
     payload: RefreshRequest,
@@ -112,7 +129,10 @@ async def refresh_token(
     refresh, _ = create_refresh_token(user.id, user.role, user.organization_id)
     return TokenPairOut(access_token=access, refresh_token=refresh, expires_in=exp)
 
-# Role promo
+
+# ---------------------------------------------------------------------------
+# Gap 5 — Role upgrade
+# ---------------------------------------------------------------------------
 @router.patch("/users/{user_id}/role", status_code=200)
 async def update_user_role(
     user_id: int,
@@ -120,7 +140,7 @@ async def update_user_role(
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_role(UserRole.admin))],
 ):
-    """Promote or change a user's role (admin only)"""
+    """Promote / change a user's role (admin only)."""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
@@ -130,7 +150,9 @@ async def update_user_role(
     return {"id": user.id, "email": user.email, "role": user.role.value}
 
 
-# Audit log
+# ---------------------------------------------------------------------------
+# Gap 7 — Audit log read
+# ---------------------------------------------------------------------------
 @router.get("/audit-log", response_model=list[AuditLogOut])
 async def list_audit_log(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -138,7 +160,7 @@ async def list_audit_log(
     limit: int = 100,
     offset: int = 0,
 ):
-    """Read audit log"""
+    """Read audit log (admin only)."""
     result = await db.execute(
         select(AuditLog)
         .order_by(AuditLog.created_at.desc())
@@ -147,32 +169,27 @@ async def list_audit_log(
     )
     return result.scalars().all()
 
-# Account deletion
+
+# ---------------------------------------------------------------------------
+# Gap 8 — Account deletion (GDPR right to erasure)
+# ---------------------------------------------------------------------------
 @router.delete("/users/me", status_code=204)
 async def delete_own_account(
-    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
     """Delete the current user's account and all associated server-side data.
-    Also blocklists the current access token so it cannot be reused."""
-    # Blocklist the current access token
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            payload = decode_token(auth_header[7:])
-            jti = payload.get("jti", "")
-            if jti:
-                db.add(TokenBlocklist(jti=jti, user_id=user.id))
-        except Exception:
-            pass
 
-    # Audit before delete
+    Since no raw biometrics are stored server-side, this only removes the
+    user row (cascades handled by DB) and adds an audit entry.
+    """
+    # Audit (before deletion, so we remember who deleted)
     db.add(AuditLog(
         user_id=user.id,
         action="account_delete",
         resource=f"users/{user.id}",
-        detail="User deleted account",
+        detail="GDPR Article 17 — right to erasure",
     ))
     await db.delete(user)
     await db.commit()
+

@@ -1,0 +1,6 @@
+masked_modality,n_features,accuracy,stress_recall,accuracy_drop
+none (baseline),0,0.9994,1.0,0.0
+HRV (BVP),7,0.9609,0.9121,0.0386
+EDA,7,0.9321,0.8795,0.0673
+TEMP,5,0.9528,0.9723,0.0466
+ACC,4,0.9764,0.9397,0.023

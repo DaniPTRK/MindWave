@@ -12,7 +12,7 @@ import org.junit.Test
 class SensorBufferFlushTest {
 
     /**
-     * Simulates a ring-buffer that mimics SensorForegroundService behaviour.
+     * Simulates a ring-buffer that mimics SensorForegroundService.*Buffer behaviour.
      */
     private class FakeBuffer<T>(private val maxSize: Int = 3600) {
         private val data = mutableListOf<T>()
@@ -75,11 +75,11 @@ class SensorBufferFlushTest {
 
     @Test
     fun `concurrent add and flush simulation`() {
-        // Buffer receives data while flush is pending
+        // Simulate: buffer receives data while flush is pending
         val buffer = FakeBuffer<Float>()
         repeat(60) { buffer.add(it.toFloat()) }
 
-        // Flush
+        // Flush (snapshot + clear)
         val snapshot = buffer.snapshot()
         buffer.clear()
 
@@ -106,10 +106,10 @@ class SensorBufferFlushTest {
 
     @Test
     fun `60s window produces expected sample counts`() {
-        // HR ~1 Hz -> 60 samples
-        // TEMP ~1 Hz -> 60 samples
-        // EDA ~1 Hz (Samsung SDK) -> 60 samples
-        // ACC ~25 Hz -> 1500 samples
+        // HR ~1 Hz → 60 samples
+        // TEMP ~1 Hz → 60 samples
+        // EDA ~1 Hz (Samsung SDK) → 60 samples
+        // ACC ~25 Hz → 1500 samples
         val hrBuffer = FakeBuffer<Float>()
         val tempBuffer = FakeBuffer<Float>()
         val edaBuffer = FakeBuffer<Float>()

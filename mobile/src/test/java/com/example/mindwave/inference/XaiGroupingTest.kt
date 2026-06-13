@@ -64,7 +64,7 @@ class XaiGroupingTest {
     fun `zero saliency produces zero shares`() {
         val saliency = FloatArray(23) { 0f }
         val total = saliency.sum()
-        // When total is 0, UI should handle gracefully
+        // When total is 0, UI should handle gracefully (equal distribution or all zero)
         if (total == 0f) {
             // Graceful fallback: all shares are 0 or equal
             assertTrue("Zero saliency should not cause crash", true)

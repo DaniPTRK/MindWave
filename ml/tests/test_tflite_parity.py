@@ -1,4 +1,4 @@
-"""Test Keras vs TFLite inference parity, same input should produce almost identical output """
+"""Test Keras vs TFLite inference parity — same input must produce near-identical logits."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -17,7 +17,7 @@ TFLITE_TRAINABLE = MODELS_DIR / "mindwave_stress_trainable.tflite"
 
 @pytest.fixture
 def sample_input():
-    """Random normalised input tensor"""
+    """Random normalised input tensor [1, 12, 23]."""
     rng = np.random.default_rng(42)
     return rng.standard_normal((1, N_SUBWINDOWS, N_FEATURES)).astype(np.float32)
 
@@ -41,7 +41,7 @@ def tflite_interpreter():
 
 
 class TestKerasModel:
-    """Tests for the Keras model."""
+    """Smoke tests for the Keras model."""
 
     def test_input_shape(self, keras_model):
         shape = keras_model.input_shape
@@ -50,17 +50,19 @@ class TestKerasModel:
 
     def test_output_shape(self, keras_model, sample_input):
         pred = keras_model.predict(sample_input, verbose=0)
+        # Binary classification → 1 or 2 output units
         assert pred.shape[0] == 1
         assert pred.shape[1] in (1, 2)
 
     def test_output_range(self, keras_model, sample_input):
         pred = keras_model.predict(sample_input, verbose=0)
+        # After sigmoid/softmax, values should be in [0, 1]
         assert np.all(pred >= 0.0)
         assert np.all(pred <= 1.0)
 
 
 class TestTFLiteModel:
-    """Tests for the standard TFLite model."""
+    """Smoke tests for the standard TFLite model."""
 
     def test_input_shape(self, tflite_interpreter):
         inp = tflite_interpreter.get_input_details()[0]
@@ -75,7 +77,7 @@ class TestTFLiteModel:
         assert result.shape[0] == 1
 
     def test_output_deterministic(self, tflite_interpreter, sample_input):
-        """Same input, same output (no random dropout at inference)."""
+        """Same input → same output (no random dropout at inference)."""
         inp = tflite_interpreter.get_input_details()[0]
         out = tflite_interpreter.get_output_details()[0]
 
@@ -91,7 +93,7 @@ class TestTFLiteModel:
 
 
 class TestKerasVsTFLiteParity:
-    """Keras and TFLite should agree within tolerance."""
+    """The core parity test: Keras and TFLite should agree within tolerance."""
 
     def test_output_close(self, keras_model, tflite_interpreter, sample_input):
         # Keras
@@ -104,7 +106,7 @@ class TestKerasVsTFLiteParity:
         tflite_interpreter.invoke()
         tflite_pred = tflite_interpreter.get_tensor(out["index"])
 
-        # Should agree within 1e-4
+        # Should agree within 1e-4 (float32 quantization tolerance)
         np.testing.assert_allclose(
             keras_pred.flatten(),
             tflite_pred.flatten(),
@@ -123,16 +125,7 @@ class TestTrainableModel:
             pytest.skip("Trainable TFLite not found")
         import tensorflow as tf
         interp = tf.lite.Interpreter(model_path=str(TFLITE_TRAINABLE))
-        try:
-            interp.allocate_tensors()
-        except RuntimeError as exc:
-            if "Select TensorFlow op" in str(exc):
-                pytest.skip(
-                    "Trainable model requires SELECT_TF_OPS (Flex delegate). "
-                    "Validated on Android; desktop TFLite interpreter does not "
-                    "support gradient ops (FlexReluGrad) without the Flex delegate."
-                )
-            raise
+        interp.allocate_tensors()
         return interp
 
     def test_has_infer_signature(self, trainable_interp):

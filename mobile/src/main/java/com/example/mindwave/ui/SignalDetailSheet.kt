@@ -30,9 +30,9 @@ import kotlin.math.min
  */
 enum class SignalType(val label: String, val unit: String) {
     STRESS("Stress level", "%"),
-    HRV("HRV", "ms"),
-    TEMPERATURE("Skin Temp", "°C"),
-    EDA("Skin Conductance", "µS"),
+    HRV("HRV (RMSSD)", "ms"),
+    TEMPERATURE("Skin temperature", "°C"),
+    EDA("Skin conductance", "µS"),
 }
 
 /** Time range for the chart. */
@@ -43,8 +43,14 @@ enum class TimeRange(val label: String) {
 }
 
 /**
- * Popup that shows a line chart + avg/peak stats
+ * Bottom-sheet style popup that shows a line chart + avg/peak stats
  * for a selected biometric signal over D / W / M range.
+ *
+ * Usage from HistoryScreen:
+ *   var sheetSignal by remember { mutableStateOf<SignalType?>(null) }
+ *   sheetSignal?.let { signal ->
+ *       SignalDetailSheet(signal = signal, readings = readings, onDismiss = { sheetSignal = null })
+ *   }
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +97,7 @@ fun SignalDetailSheet(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
 
+                // ── Header row: title · time-range selector · close ──────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -132,6 +139,7 @@ fun SignalDetailSheet(
 
                 Spacer(Modifier.height(16.dp))
 
+                // ── Stat chips: avg / peak / low ─────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -143,6 +151,7 @@ fun SignalDetailSheet(
 
                 Spacer(Modifier.height(16.dp))
 
+                // ── Line chart ───────────────────────────────────────────────────────
                 if (values.size >= 2) {
                     SignalLineChart(
                         values = values,
@@ -172,7 +181,7 @@ fun SignalDetailSheet(
 
                 Spacer(Modifier.height(8.dp))
 
-
+                // ── X-axis label ─────────────────────────────────────────────────────
                 if (values.size >= 2) {
                     val fmt = when (timeRange) {
                         TimeRange.DAY   -> SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -244,7 +253,7 @@ private fun SignalLineChart(
         fun xOf(ts: Long) = (ts.toFloat() - minT) / rangeT * w
         fun yOf(v: Float) = h - padV - (v - minV) / rangeV * (h - 2 * padV)
 
-        // Horizontal grid lines
+        // Horizontal grid lines (3)
         repeat(4) { i ->
             val y = h - padV - i / 3f * (h - 2 * padV)
             drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1.dp.toPx())
@@ -268,7 +277,7 @@ private fun SignalLineChart(
         drawPath(linePath, lineColor, style = Stroke(width = 2.dp.toPx(),
             cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-        // Dots at data points
+        // Dots at data points (only if few enough)
         if (values.size <= 30) {
             values.forEach { (ts, v) ->
                 drawCircle(lineColor, radius = 3.dp.toPx(), center = Offset(xOf(ts), yOf(v)))

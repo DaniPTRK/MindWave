@@ -59,25 +59,37 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         WaveHeader()
+
+        // Main stress gauge
         StressGaugeCard(latestReading, onClick = onOpenDetail)
 
+        // Sensor status summary strip
         SensorStatusStrip(latestReading, onSensorStatusClick)
 
+        // Quick stats
         if (latestReading != null) {
             QuickStatsRow(latestReading)
         }
 
+        // XAI – top-level "Why?" card
         if (xaiExplanations.isNotEmpty()) {
             XaiCard(xaiExplanations)
         }
+
+        // Recommendations
         recommendations.forEach { msg -> StressRecommendationCard(message = msg) }
 
+        // Quick actions
         if (latestReading != null) {
             QuickActionsRow(onStartBreathing = onStartBreathing)
         }
+
+        // Feedback + journal
         FeedbackSection(onFeedback = onFeedback, onJournalClick = onJournalClick)
     }
 }
+
+// ── Header ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun WaveHeader() {
@@ -106,6 +118,8 @@ private fun WaveHeader() {
         }
     }
 }
+
+// ── Gauge ─────────────────────────────────────────────────────────────────────
 
 private val trackColor = Color(0xFFE0F2F1)
 
@@ -162,7 +176,7 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Pair your Smartwatch, then start the MindWave service on the watch.",
+                    "Pair your Galaxy Watch, then start the MindWave service on the watch.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -175,6 +189,7 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
     }
 }
 
+// ── Sensor status strip ───────────────────────────────────────────────────────
 
 @Composable
 private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
@@ -213,7 +228,7 @@ private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    Text("Open the smart wearable and start the MindWave service on the watch.",
+                    Text("Open Galaxy Wearable and start the MindWave service on the watch.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -224,6 +239,7 @@ private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
     }
 }
 
+// ── Quick stats ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun QuickStatsRow(reading: StressReading) {
@@ -250,6 +266,8 @@ private fun QuickStat(icon: androidx.compose.ui.graphics.vector.ImageVector,
         }
     }
 }
+
+// ── XAI card ──────────────────────────────────────────────────────────────────
 
 @Composable
 private fun XaiCard(explanations: List<XaiExplanation>) {
@@ -285,6 +303,8 @@ private fun XaiCard(explanations: List<XaiExplanation>) {
     }
 }
 
+// ── Quick actions ─────────────────────────────────────────────────────────────
+
 @Composable
 private fun QuickActionsRow(onStartBreathing: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -301,6 +321,8 @@ private fun QuickActionsRow(onStartBreathing: () -> Unit) {
     }
 }
 
+// ── Recommendations ───────────────────────────────────────────────────────────
+
 @Composable
 fun StressRecommendationCard(message: String) {
     Card(
@@ -315,6 +337,8 @@ fun StressRecommendationCard(message: String) {
         }
     }
 }
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
 
 @Composable
 private fun FeedbackSection(onFeedback: (Boolean) -> Unit, onJournalClick: () -> Unit) {
@@ -352,3 +376,4 @@ private fun FeedbackSection(onFeedback: (Boolean) -> Unit, onJournalClick: () ->
         }
     }
 }
+

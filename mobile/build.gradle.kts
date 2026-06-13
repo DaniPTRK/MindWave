@@ -48,9 +48,6 @@ android {
     androidResources {
         noCompress += "tflite"
     }
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-    }
 }
 
 dependencies {

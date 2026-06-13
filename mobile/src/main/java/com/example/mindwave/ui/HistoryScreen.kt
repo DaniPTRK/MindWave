@@ -81,7 +81,7 @@ fun HistoryScreen(
             color = MaterialTheme.colorScheme.primary,
         )
 
-        // Signal selector buttons
+        // ── Signal selector buttons ──────────────────────────────────────────────
         Text(
             "View signal detail",
             style = MaterialTheme.typography.titleSmall,

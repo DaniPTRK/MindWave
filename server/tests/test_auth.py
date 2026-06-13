@@ -1,4 +1,4 @@
-"""Test auth endpoints"""
+"""Test authentication endpoints: register, login, JWT validation, role access."""
 from __future__ import annotations
 
 import pytest
@@ -59,7 +59,7 @@ class TestLogin:
 
     async def test_login_success(self, client: AsyncClient, admin_user):
         resp = await client.post("/auth/login", data={
-            "username": "admin@example.com",
+            "username": "admin@test.local",
             "password": "Admin1234",
         })
         assert resp.status_code == 200
@@ -71,7 +71,7 @@ class TestLogin:
 
     async def test_login_wrong_password(self, client: AsyncClient, admin_user):
         resp = await client.post("/auth/login", data={
-            "username": "admin@example.com",
+            "username": "admin@test.local",
             "password": "WrongPass1",
         })
         assert resp.status_code == 401
@@ -93,7 +93,7 @@ class TestMe:
             "Authorization": f"Bearer {admin_token}",
         })
         assert resp.status_code == 200
-        assert resp.json()["email"] == "admin@example.com"
+        assert resp.json()["email"] == "admin@test.local"
 
     async def test_me_no_token(self, client: AsyncClient):
         resp = await client.get("/auth/me")

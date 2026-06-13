@@ -61,14 +61,25 @@ class TrainableModule(tf.Module):
         }
 
     def _restore_signature(self):
-        """Build an input_signature matching trainable_variables shapes."""
+        """Build an input_signature list matching trainable_variables shapes.
+
+        Uses positional args (vals_0, vals_1, …) which is how tf.function
+        compiles variadic *args.  The TFLite signature input keys will therefore
+        be "vals_0", "vals_1", … — and Android must use those same keys when
+        calling interp.runSignature(..., "restore").
+
+        NOTE: ``parameters()`` outputs "var_0", "var_1", … (different prefix).
+        FLTrainingWorker.saveWeights stores them under their original key names
+        and restoreWeights must remap them to "vals_0", "vals_1", … before
+        calling the restore signature.
+        """
         return [
-            tf.TensorSpec(v.shape, v.dtype)
-            for v in self.model.trainable_variables
+            tf.TensorSpec(v.shape, v.dtype, name=f"vals_{i}")
+            for i, v in enumerate(self.model.trainable_variables)
         ]
 
     def restore(self, *new_values):
-        """Overwrite all trainable weights from external arrays."""
+        """Overwrite all trainable weights from external arrays (positional)."""
         for v, nv in zip(self.model.trainable_variables, new_values):
             v.assign(nv)
         return {"status": tf.constant(1)}

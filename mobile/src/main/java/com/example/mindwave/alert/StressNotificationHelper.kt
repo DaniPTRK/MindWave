@@ -20,10 +20,10 @@ object StressNotificationHelper {
     fun createChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Stress Alerts",
+            "Stress Likelihood Alerts",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Fired when stress exceeds the critical threshold"
+            description = "Fired when stress likelihood exceeds your configured threshold"
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 300, 200, 300)
         }
@@ -32,9 +32,11 @@ object StressNotificationHelper {
     }
 
     fun fireAlert(context: Context, stressPercent: Int, topFactor: String) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("open_detail", true)
+        // Deep-link directly to stress_detail/-1 (NavGraph resolves -1 to the latest reading)
+        val deepLinkUri = android.net.Uri.parse("mindwave://stress_detail/-1")
+        val intent = Intent(Intent.ACTION_VIEW, deepLinkUri, context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pending = PendingIntent.getActivity(
             context, 0, intent,
@@ -43,8 +45,8 @@ object StressNotificationHelper {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("High stress detected ($stressPercent%)")
-            .setContentText("Main factor: $topFactor. Tap for details & recommendations")
+            .setContentTitle("High stress likelihood ($stressPercent%)")
+            .setContentText("Main signal: $topFactor. Tap for details & breathing exercise")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVibrate(longArrayOf(0, 300, 200, 300))
             .setContentIntent(pending)

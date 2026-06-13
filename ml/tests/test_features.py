@@ -1,4 +1,4 @@
-"""Test feature extraction: shapes, names, edge cases"""
+"""Test feature extraction: shapes, names, edge cases, and golden-sample parity."""
 from __future__ import annotations
 
 import numpy as np
@@ -50,6 +50,7 @@ class TestHRVTimeFeatures:
 
     def test_output_length(self, synthetic_bvp_60s):
         from src.features import _hrv_time_features
+        # 5-second sub-window at 64 Hz
         seg = synthetic_bvp_60s[:320]
         out = _hrv_time_features(seg, fs=64)
         assert out.shape == (4,)
@@ -61,6 +62,7 @@ class TestHRVTimeFeatures:
 
     def test_constant_signal_returns_zeros(self):
         from src.features import _hrv_time_features
+        # Constant signal → no peaks → zeros
         out = _hrv_time_features(np.ones(320, dtype=np.float32), fs=64)
         assert np.allclose(out, 0.0)
 
@@ -86,7 +88,7 @@ class TestEDAFeatures:
     """Test tonic/phasic EDA features."""
 
     def test_output_length(self, synthetic_eda_60s):
-        seg = synthetic_eda_60s[:20]
+        seg = synthetic_eda_60s[:20]  # 5s at 4 Hz
         out = eda_features(seg, fs=4)
         assert out.shape == (7,)
 

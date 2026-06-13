@@ -11,8 +11,9 @@ class TestLOSOFolds:
     """Verify Leave-One-Subject-Out folds are correctly constructed."""
 
     def test_all_subjects_present(self):
-        """SUBJECTS list should contain 15 subjs"""
+        """SUBJECTS list should contain 15 subjects (S2..S17 excluding S12)."""
         assert len(SUBJECTS) == 15
+        assert "S12" not in SUBJECTS
 
     def test_fold_excludes_target(self):
         """For each fold, the test set should contain ONLY the held-out subject."""

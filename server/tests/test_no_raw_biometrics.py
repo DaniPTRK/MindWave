@@ -1,4 +1,9 @@
-"""Test that the server database stores NO raw biometric data"""
+"""Test that the server database stores NO raw biometric data.
+
+This is the single most important privacy proof for the thesis:
+demonstrate that no heart-rate samples, EDA readings, temperature values,
+or accelerometer data exist anywhere in the server schema.
+"""
 from __future__ import annotations
 
 import pytest
@@ -55,7 +60,7 @@ class TestNoRawBiometrics:
                 )
 
     def test_known_tables_only(self):
-        """Only expected tables should exist in the schema"""
+        """Server should have ONLY these tables (whitelist approach)."""
         allowed_tables = {
             "organizations",
             "users",
@@ -75,11 +80,11 @@ class TestNoRawBiometrics:
         """The AggregateStressStat table should NOT have per-user data."""
         table = AggregateStressStat.__table__
         col_names = {c.name for c in table.columns}
-
+        # Should have n_users, mean, std — NOT individual readings
         assert "n_users" in col_names
         assert "mean_stress_score" in col_names
         assert "std_stress" in col_names
-
+        # Should NOT have per-user fields
         forbidden = {"user_id", "reading_id", "score", "raw_score"}
         assert not col_names.intersection(forbidden), (
             f"AggregateStressStat should not have per-user columns: "

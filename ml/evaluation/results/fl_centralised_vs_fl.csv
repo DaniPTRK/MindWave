@@ -1,0 +1,4 @@
+evaluation,accuracy,note
+Centralised - LOSO (cross-subject),0.952,upper bound - full data access at training
+FL round 3 distributed eval (15 virtual clients),0.9783,"warm-start, 3 rounds, FedAvg"
+Accuracy gap (centralised − FL round 3),-0.0262,expected to shrink with more rounds / local epochs

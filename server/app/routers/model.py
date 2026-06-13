@@ -97,7 +97,11 @@ async def post_round_summary(
     await db.refresh(mv)
     return mv
 
+
+# ---------------------------------------------------------------------------
 # Mobile FL weight submission (HTTP-based, bypasses Flower gRPC)
+# ---------------------------------------------------------------------------
+
 def _parse_weights_bin(raw: bytes) -> list[np.ndarray]:
     """
     Deserialise the binary format written by FLTrainingWorker.saveWeights():
@@ -123,11 +127,16 @@ async def submit_weights(
     """
     Accept a client's fine-tuned weight delta, save it to the pending pool,
     then check whether enough clients have submitted to trigger aggregation.
+
+    The pending pool lives at  <models_dir>/pending_weights/user_<id>.bin
+    Aggregation fires when  pending_count >= FL_MIN_CLIENTS_FOR_AGGREGATION
+    (defaults to 1 so a single-device demo works out of the box).
     """
     raw = await weights_file.read()
     if not raw:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty weights file")
 
+    # Validate the binary is parseable before saving
     try:
         _parse_weights_bin(raw)
     except Exception as exc:
@@ -151,13 +160,13 @@ async def submit_weights(
             "needed": min_clients,
         }
 
-    # Aggregate via FedAvg
+    # --- Aggregate via FedAvg ---
     all_weight_lists: list[list[np.ndarray]] = []
     for f in pending_files:
         try:
             all_weight_lists.append(_parse_weights_bin(f.read_bytes()))
         except Exception:
-            continue
+            continue  # skip corrupt files
 
     if not all_weight_lists:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -170,7 +179,7 @@ async def submit_weights(
         for i in range(len(all_weight_lists[0]))
     ]
 
-    # Persist aggregated weights
+    # Persist aggregated weights as .npz
     last_version = (
         await db.execute(
             select(func.max(ModelVersion.version))

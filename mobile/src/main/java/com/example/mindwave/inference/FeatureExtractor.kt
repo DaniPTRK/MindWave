@@ -74,7 +74,8 @@ object FeatureExtractor {
         return result
     }
 
-    // Subwindow slicing
+    // ---------- Sub-window slicing ------------------------------------------
+
     private fun subwindowSlice(arr: FloatArray, sw: Int, total: Int): FloatArray {
         if (arr.isEmpty()) return FloatArray(0)
         val start = (arr.size.toLong() * sw / total).toInt()
@@ -82,34 +83,37 @@ object FeatureExtractor {
         return arr.copyOfRange(start.coerceAtLeast(0), end.coerceAtMost(arr.size))
     }
 
-    // HRV time feats
+    // ---------- HRV time-domain (from BPM samples → RR intervals) ----------
+
     private fun hrvTimeFeatures(bpmSamples: FloatArray): FloatArray {
         val out = FloatArray(4)
         if (bpmSamples.size < 3) return out
+        // Convert BPM → RR intervals in milliseconds
         val rr = FloatArray(bpmSamples.size) { 60_000f / bpmSamples[it].coerceAtLeast(1f) }
-        out[0] = rr.average().toFloat()
-        out[1] = rr.stdDev()
+        out[0] = rr.average().toFloat()                     // meanNN
+        out[1] = rr.stdDev()                                // SDNN
         val diffs = FloatArray(rr.size - 1) { abs(rr[it + 1] - rr[it]) }
-        out[2] = if (diffs.isEmpty()) 0f else
+        out[2] = if (diffs.isEmpty()) 0f else               // RMSSD
             sqrt(diffs.map { it * it }.average()).toFloat()
-        out[3] = if (diffs.isEmpty()) 0f else
+        out[3] = if (diffs.isEmpty()) 0f else               // pNN50
             diffs.count { it > 50f }.toFloat() / diffs.size * 100f
         return out
     }
 
-    // EDA features, simplified tonic/phasic
+    // ---------- EDA features (simplified tonic/phasic) ----------------------
+
     private fun edaFeatures(eda: FloatArray): FloatArray {
         val out = FloatArray(7)
         if (eda.size < 3) return out
         val mean = eda.average().toFloat()
-        // Tonic (SCL) ≈ mean level and slope of the signal
-        out[0] = mean
-        out[1] = linearSlope(eda)
+        // Tonic (SCL) ≈ low-pass: just use the mean and linear slope
+        out[0] = mean                                        // scl_mean
+        out[1] = linearSlope(eda)                           // scl_slope
         // Phasic (SCR) ≈ signal minus its mean
         val scr = FloatArray(eda.size) { eda[it] - mean }
-        out[2] = scr.average().toFloat()
-        out[3] = scr.stdDev()
-        out[4] = scr.map { abs(it) }.sum() / eda.size
+        out[2] = scr.average().toFloat()                    // scr_mean
+        out[3] = scr.stdDev()                               // scr_std
+        out[4] = scr.map { abs(it) }.sum() / eda.size      // scr_auc (simplified)
         // SCR peaks = zero-crossings of derivative above zero
         var peaks = 0
         var ampSum = 0f
@@ -124,7 +128,8 @@ object FeatureExtractor {
         return out
     }
 
-    // Temp feats
+    // ---------- Temperature features ----------------------------------------
+
     private fun tempFeatures(temp: FloatArray): FloatArray {
         val out = FloatArray(5)
         if (temp.isEmpty()) return out
@@ -136,7 +141,7 @@ object FeatureExtractor {
         return out
     }
 
-    // ACC magnitude feats
+    // ---------- ACC magnitude features --------------------------------------
 
     /**
      * Compute tri-axial magnitude, then apply a 4th-order Butterworth band-pass
@@ -191,20 +196,21 @@ object FeatureExtractor {
     private fun accFeatures(accMag: FloatArray): FloatArray {
         val out = FloatArray(4)
         if (accMag.isEmpty()) return out
-        out[0] = accMag.average().toFloat() // mag_mean
-        out[1] = accMag.stdDev() // mag_std
-        out[2] = accMag.map { it * it }.average().toFloat()  // mag_energy
-
+        out[0] = accMag.average().toFloat()                        // mag_mean
+        out[1] = accMag.stdDev()                                   // mag_std
+        out[2] = accMag.map { it * it }.average().toFloat()        // mag_energy
+        // zero-crossing rate of mean-centred signal
         val mean = out[0]
         var zc = 0
         for (i in 1 until accMag.size) {
             if ((accMag[i] - mean >= 0f) != (accMag[i - 1] - mean >= 0f)) zc++
         }
-        out[3] = if (accMag.size > 1) zc.toFloat() / accMag.size else 0f // zcr
+        out[3] = if (accMag.size > 1) zc.toFloat() / accMag.size else 0f  // zcr
         return out
     }
 
-    // helpers
+    // ---------- Math helpers ------------------------------------------------
+
     private fun FloatArray.stdDev(): Float {
         if (size < 2) return 0f
         val m = average()
@@ -227,4 +233,5 @@ object FeatureExtractor {
         return if (den == 0.0) 0f else (num / den).toFloat()
     }
 }
+
 

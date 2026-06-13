@@ -4,11 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Tests for FeatureExtractor.
+ * Golden-sample test for FeatureExtractor.
  *
  * Verifies output shape, feature count, and deterministic behaviour
  * given synthetic sensor buffers that mimic a 60s window from the watch.
  *
+ * This is the SINGLE MOST VALUABLE TEST for thesis credibility:
+ * it proves the Android pipeline produces the same feature structure
+ * as the Python ml/src/features.py.
  */
 class FeatureExtractorTest {
 
@@ -25,7 +28,7 @@ class FeatureExtractorTest {
 
         assertNotNull("Extract should return non-null for valid data", result)
         assertEquals(
-            "Feature tensor size should276 (12 windows * 23 features)",
+            "Feature tensor size should be 12 × 23 = 276",
             FeatureExtractor.N_SUBWINDOWS * FeatureExtractor.N_FEATURES,
             result!!.size
         )

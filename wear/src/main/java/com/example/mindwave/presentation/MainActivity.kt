@@ -75,7 +75,7 @@ private fun stressColor(percent: Int): Color = when {
 fun WearApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Collect from StateFlow
+    // Collect from StateFlow — recomposes automatically when phone sends a new score.
     val snapshot by WatchStressStore.flow.collectAsStateWithLifecycle()
     var moodSent by remember { mutableStateOf(false) }
 

@@ -16,14 +16,14 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mindwave_settings")
 
 /**
- * User-tunable settings persisted via DataStore.
+ * User-tunable settings persisted via DataStore, namespaced per account.
  *
- * Holds the stress-alert threshold, FL participation, calendar integration,
- * and do not disturb hours used by the stress alert worker.
+ * Pass the current user's email so each account gets its own key prefix,
+ * preventing settings from leaking between accounts on the same device.
  */
 class SettingsRepository(private val context: Context, private val userEmail: String = "") {
 
-    // Sanitize the email to a safe key prefix
+    // Sanitize the email to a safe key prefix: lowercase, non-alphanumeric → "_"
     private val prefix = userEmail.lowercase().replace(Regex("[^a-z0-9]"), "_").take(40)
         .let { if (it.isBlank()) "default" else it }
 

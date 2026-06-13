@@ -255,26 +255,21 @@ fun StressDetailScreen(
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            Triple(Icons.Filled.SentimentVeryDissatisfied, 1, "Very stressed"),
-                            Triple(Icons.Filled.SentimentDissatisfied,     2, "Tense"),
-                            Triple(Icons.Filled.SentimentNeutral,          3, "Neutral"),
-                            Triple(Icons.Filled.SentimentSatisfied,        4, "Calm"),
-                            Triple(Icons.Filled.SentimentVerySatisfied,    5, "Very calm"),
-                        ).forEach { (icon, mood, label) ->
-                            IconButton(onClick = { onJournalEntry(mood, "Quick: $label") }) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = label,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        Triple(Icons.Filled.SentimentVeryDissatisfied, 5, "Very stressed"),
+                        Triple(Icons.Filled.SentimentDissatisfied,     4, "Tense"),
+                        Triple(Icons.Filled.SentimentNeutral,          3, "Neutral"),
+                        Triple(Icons.Filled.SentimentSatisfied,        2, "Calm"),
+                        Triple(Icons.Filled.SentimentVerySatisfied,    1, "Very calm"),
+                    ).forEach { (icon, mood, label) ->
+                        IconButton(onClick = { onJournalEntry(mood, "Quick: $label") }) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
                         }
                     }
                 }

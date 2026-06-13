@@ -28,5 +28,5 @@ data class EmotionalJournal(
     val userMood: Int, // 1 (very stressed / sad) – 5 (very happy / calm)
     val note: String = "",
     val tags: String = "", // comma separated, for ex "work,meeting,tired"
-    val userEmail: String = "", // owner, entries are only shown to the account that created them
+    val userEmail: String = "", // owner — entries are only shown to the account that created them
 )

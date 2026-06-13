@@ -1,4 +1,4 @@
-"""User registration, login and identity endpoint."""
+"""User registration, login (JWT), and identity endpoint."""
 from __future__ import annotations
 
 from typing import Annotated
@@ -31,7 +31,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     payload: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _admin: Annotated[User, Depends(require_role(UserRole.admin))], # admin only endpoint to create any role
+    # Admin-only by default to prevent open self-signup in production.
+    _admin: Annotated[User, Depends(require_role(UserRole.admin))],
 ) -> User:
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none() is not None:
@@ -49,34 +50,12 @@ async def register(
     return user
 
 
-@router.post("/register/user", response_model=UserOut, status_code=201)
-async def register_user(
-    payload: UserCreate,
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
-    """Public self-reg for normal users"""
-    existing = await db.execute(select(User).where(User.email == payload.email))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-
-    user = User(
-        email=payload.email,
-        hashed_password=hash_password(payload.password),
-        role=UserRole.user,
-        organization_id=payload.organization_id,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
 @router.post("/login", response_model=TokenWithRefresh)
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TokenWithRefresh:
-    """Standard OAuth2 password grant, returns access + refresh JWT tokens."""
+    """Standard OAuth2 password grant — returns access + refresh JWT tokens."""
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(form_data.password, user.hashed_password):
@@ -100,3 +79,5 @@ async def login(
 @router.get("/me", response_model=UserOut)
 async def me(user: Annotated[User, Depends(get_current_user)]) -> User:
     return user
+
+

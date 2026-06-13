@@ -224,6 +224,7 @@ class StressInferenceRepository private constructor(private val context: Context
         return buf
     }
 
+
     /** Extract the value for a given feature index from sub-window 0. */
     private fun FloatArray.extractFeatureAt(featureIdx: Int): Float =
         getOrElse(featureIdx) { 0f }

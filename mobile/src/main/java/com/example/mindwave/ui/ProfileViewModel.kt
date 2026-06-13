@@ -81,7 +81,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     fun seedDemoData(onDone: () -> Unit = {}) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                DemoDataSeeder.seed(db, userEmail = authRepo.getEmail() ?: "", replaceExisting = true)
+                DemoDataSeeder.seed(db, replaceExisting = true)
             }
             onDone()
         }

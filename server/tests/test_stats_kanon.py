@@ -26,7 +26,7 @@ class TestKAnonymity:
             await db.commit()
 
     async def test_n_users_below_threshold_rejected(self, client: AsyncClient, admin_token: str):
-        """n_users = 4 < K_ANON_THRESHOLD(5), err"""
+        """n_users = 4 < K_ANON_THRESHOLD(5) → 422 validation error."""
         resp = await client.post("/stats/aggregate", json={
             "organization_id": 1,
             "period_start": "2025-01-01T00:00:00Z",
@@ -40,7 +40,7 @@ class TestKAnonymity:
         assert "k-anonymity" in str(resp.json()).lower() or "n_users" in str(resp.json()).lower()
 
     async def test_n_users_at_threshold_accepted(self, client: AsyncClient, admin_token: str):
-        """n_users = 5 == K_ANON_THRESHOLD, accepted."""
+        """n_users = 5 == K_ANON_THRESHOLD → accepted."""
         resp = await client.post("/stats/aggregate", json={
             "organization_id": 1,
             "period_start": "2025-01-01T00:00:00Z",
@@ -53,7 +53,7 @@ class TestKAnonymity:
         assert resp.status_code == 201
 
     async def test_n_users_above_threshold_accepted(self, client: AsyncClient, admin_token: str):
-        """n_users = 50 > K_ANON_THRESHOLD, accepted."""
+        """n_users = 50 → accepted."""
         resp = await client.post("/stats/aggregate", json={
             "organization_id": 1,
             "period_start": "2025-02-01T00:00:00Z",

@@ -25,6 +25,14 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isLoggedIn(): Boolean = repo.isLoggedIn()
 
+    fun isOfflineUser(): Boolean = repo.isOfflineUser()
+
+    /** Bypasses the server and starts a fully local anonymous session. */
+    fun continueOffline(onSuccess: () -> Unit) {
+        repo.loginOffline()
+        onSuccess()
+    }
+
     fun login(email: String, password: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
@@ -48,8 +56,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun logout(onLoggedOut: () -> Unit) {
-        repo.logout()
-        onLoggedOut()
+        viewModelScope.launch {
+            repo.logout()
+            // Notify watch that phone is logged out (watch should stop sending data)
+            WatchAuthNotifier.notifyWatch(
+                getApplication(),
+                isLoggedIn = false,
+                userEmail = ""
+            )
+            onLoggedOut()
+        }
     }
 
     fun clearError() {
