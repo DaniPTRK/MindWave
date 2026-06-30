@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mindwave.data.AuthRepository
+import com.example.mindwave.sync.WatchAuthNotifier
 import kotlinx.coroutines.launch
 
 /**
@@ -25,12 +26,36 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isLoggedIn(): Boolean = repo.isLoggedIn()
 
+    fun isOfflineUser(): Boolean = repo.isOfflineUser()
+
+    /** Bypasses the server and starts a fully local anonymous session. */
+    fun continueOffline(onSuccess: () -> Unit) {
+        repo.loginOffline()
+        // Notify watch that phone is now active (offline mode still allows sensor streaming)
+        viewModelScope.launch {
+            WatchAuthNotifier.notifyWatch(
+                getApplication(),
+                isLoggedIn = true,
+                userEmail = com.example.mindwave.data.OFFLINE_EMAIL
+            )
+        }
+        onSuccess()
+    }
+
     fun login(email: String, password: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
             repo.login(email.trim(), password)
-                .onSuccess { onSuccess() }
+                .onSuccess {
+                    // Notify watch that phone is now logged in so sensor streaming resumes
+                    WatchAuthNotifier.notifyWatch(
+                        getApplication(),
+                        isLoggedIn = true,
+                        userEmail = email.trim()
+                    )
+                    onSuccess()
+                }
                 .onFailure { errorMessage = it.message }
             isLoading = false
         }
@@ -48,8 +73,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun logout(onLoggedOut: () -> Unit) {
-        repo.logout()
-        onLoggedOut()
+        viewModelScope.launch {
+            repo.logout()
+            // Notify watch that phone is logged out (watch should stop sending data)
+            WatchAuthNotifier.notifyWatch(
+                getApplication(),
+                isLoggedIn = false,
+                userEmail = ""
+            )
+            onLoggedOut()
+        }
     }
 
     fun clearError() {

@@ -16,12 +16,13 @@ object WatchStressSender {
     private const val TAG = "MWWatchSender"
     private const val DATA_PATH = "/mindwave/stress_score"
 
-    suspend fun send(context: Context, percent: Int, label: String, timestamp: Long) {
+    suspend fun send(context: Context, percent: Int, label: String, timestamp: Long, readingId: Long) {
         runCatching {
             val request = PutDataMapRequest.create(DATA_PATH).apply {
                 dataMap.putInt("percent", percent)
                 dataMap.putString("label", label)
                 dataMap.putLong("timestamp", timestamp)
+                dataMap.putLong("reading_id", readingId)
                 dataMap.putLong("_nonce", System.nanoTime())
             }.asPutDataRequest().setUrgent()
             Wearable.getDataClient(context).putDataItem(request).await()

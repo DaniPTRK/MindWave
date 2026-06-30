@@ -32,7 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * History screen — 7×24 weekly heatmap + monthly trend + per-signal charts.
+ * History screen — 7 x 24 weekly heatmap + monthly trend + per-signal charts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,14 +76,14 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            "Stress History",
+            "Stress Likelihood History",
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary,
         )
 
         // Signal selector buttons
         Text(
-            "View signal detail",
+            "Explore signal trends",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -91,7 +91,7 @@ fun HistoryScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SignalButton(Icons.Filled.MonitorHeart, "Stress", Modifier.weight(1f)) {
+            SignalButton(Icons.Filled.MonitorHeart, "Likelihood", Modifier.weight(1f)) {
                 sheetSignal = SignalType.STRESS
             }
             SignalButton(Icons.Filled.Favorite, "HRV", Modifier.weight(1f)) {
@@ -183,49 +183,76 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    LegendDot(Color(0xFF27AE60), "Low")
-                    Spacer(Modifier.width(12.dp))
-                    LegendDot(Color(0xFFF1C40F), "Medium")
-                    Spacer(Modifier.width(12.dp))
-                    LegendDot(Color(0xFFE74C3C), "High")
-                    Spacer(Modifier.width(12.dp))
+                    LegendDot(Color(0xFF27AE60), "0–39% Low")
+                    Spacer(Modifier.width(10.dp))
+                    LegendDot(Color(0xFFF1C40F), "40–69% Elevated")
+                    Spacer(Modifier.width(10.dp))
+                    LegendDot(Color(0xFFE74C3C), "70%+ High")
+                    Spacer(Modifier.width(10.dp))
                     LegendDot(MaterialTheme.colorScheme.surfaceVariant, "No data")
                 }
             }
         }
 
-        // Monthly average summary
+        // Monthly average summary — day-based to avoid one busy day dominating
         val monthReadings = readings.filter {
             val cal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
-            val now = Calendar.getInstance()
-            cal.get(Calendar.MONTH) == now.get(Calendar.MONTH) &&
-                    cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+            val now2 = Calendar.getInstance()
+            cal.get(Calendar.MONTH) == now2.get(Calendar.MONTH) &&
+                    cal.get(Calendar.YEAR) == now2.get(Calendar.YEAR)
         }
         if (monthReadings.isNotEmpty()) {
-            val avgStress = monthReadings.map { it.stressProbStress }.average()
+            // Average per calendar day, then average across days
+            val dailyAvgMap = monthReadings.groupBy {
+                val c = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+                "${c.get(Calendar.YEAR)}-${c.get(Calendar.DAY_OF_YEAR)}"
+            }.mapValues { (_, dr) -> dr.map { it.stressProbStress }.average() }
+
+            val daysTracked = dailyAvgMap.size
+            val avgLikelihood = dailyAvgMap.values.average()
+            val hasEnoughData = daysTracked >= 7
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Monthly Average",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text("This month", style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text("$daysTracked days tracked",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        "${"%.0f".format(avgStress * 100)}% average stress",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = stressColor(avgStress.toFloat()),
-                    )
-                    Text(
-                        "${monthReadings.size} readings this month",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (hasEnoughData) {
+                        Text(
+                            "${"%.0f".format(avgLikelihood * 100)}% average likelihood",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = stressColor(avgLikelihood.toFloat()),
+                        )
+                        Text(
+                            "Based on $daysTracked days · ${monthReadings.size} sensor windows",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            "Limited monthly data",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            "${monthReadings.size} sensor windows · $daysTracked / 7+ days needed for reliable average",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

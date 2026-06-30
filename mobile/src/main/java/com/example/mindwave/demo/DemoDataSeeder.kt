@@ -1,6 +1,7 @@
-package com.example.mindwave.demo
+﻿package com.example.mindwave.demo
 
 import com.example.mindwave.data.EmotionalJournal
+import com.example.mindwave.data.JournalEntryType
 import com.example.mindwave.data.MindWaveDatabase
 import com.example.mindwave.data.StressReading
 import com.example.mindwave.data.XaiExplanation
@@ -88,6 +89,7 @@ object DemoDataSeeder {
                             userMood = if (isStress) (1 + rng.nextInt(2)) else (4 + rng.nextInt(2)),
                             note = note,
                             tags = tags,
+                            entryType = JournalEntryType.JOURNAL,
                             userEmail = userEmail,
                         )
                     )
@@ -107,6 +109,7 @@ object DemoDataSeeder {
                         userMood = 3 + rng.nextInt(3),
                         note = note,
                         tags = tags,
+                        entryType = JournalEntryType.JOURNAL,
                         userEmail = userEmail,
                     )
                 )
@@ -179,8 +182,18 @@ object DemoDataSeeder {
             }
     }
 
+    /**
+     * Builds explanation for synthetic readings
+     */
+    fun buildXaiForReading(
+        readingId: Long,
+        isStress: Boolean,
+        seed: Int = 42,
+    ): List<XaiExplanation> = buildXai(readingId, isStress, Random(seed))
+
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t.coerceIn(0f, 1f)
 }
 
 @Suppress("unused")
 private fun Float.toPercent(): Int = (this * 100).roundToInt()
+

@@ -1,0 +1,4 @@
+direction,encoding,bytes_per_client_per_round,kb_per_client_per_round,total_bytes_all_rounds,total_kb_all_rounds
+Upload (client→server),float32,144264,140.9,6491880,6339.7
+Upload (client→server),int8 (potential),36066,35.2,1622970,1584.9
+Download (server→client),float32,144264,140.9,6491880,6339.7

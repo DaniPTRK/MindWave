@@ -1,0 +1,41 @@
+suite,test,time_ms,status,module
+FeatureExtractorTest,extract returns correct shape for valid input,24.0,PASS,mobile
+FeatureExtractorTest,output is deterministic,4.0,PASS,mobile
+FeatureExtractorTest,extract returns null for very short HR,1.0,PASS,mobile
+FeatureExtractorTest,empty ACC still produces valid output,1.0,PASS,mobile
+FeatureExtractorTest,no NaN or Inf in output,5.0,PASS,mobile
+FeatureExtractorTest,temp features contain correct mean for constant temp,1.0,PASS,mobile
+FeatureExtractorTest,constants match Python pipeline,0.0,PASS,mobile
+FeatureExtractorTest,HRV features use correct RR interval formula,0.0,PASS,mobile
+ScalerNormalizerTest,normalize produces correct z-scores,3.0,PASS,mobile
+ScalerNormalizerTest,normalize returns input unchanged when dimensions mismatch,5.0,PASS,mobile
+ScalerNormalizerTest,normalize handles zero scale gracefully,0.0,PASS,mobile
+ScalerNormalizerTest,normalize wraps across sub-windows,1.0,PASS,mobile
+ScalerNormalizerTest,normalize output has same size as input,0.0,PASS,mobile
+XaiGroupingTest,dominant sensor group identified correctly,5.0,PASS,mobile
+XaiGroupingTest,negative saliency values handled,0.0,PASS,mobile
+XaiGroupingTest,zero saliency produces zero shares,0.0,PASS,mobile
+XaiGroupingTest,group shares sum to 1 when all saliency positive,0.0,PASS,mobile
+XaiGroupingTest,TEMP group has 5 features,0.0,PASS,mobile
+XaiGroupingTest,ACC group has 4 features,0.0,PASS,mobile
+XaiGroupingTest,groups cover all 23 features exactly once,4.0,PASS,mobile
+XaiGroupingTest,EDA group has 7 features,0.0,PASS,mobile
+XaiGroupingTest,HRV group has 7 features (4 time + 3 freq),0.0,PASS,mobile
+SensorBufferFlushTest,buffer is empty after clear,5.0,PASS,wear
+SensorBufferFlushTest,buffer respects max size,7.0,PASS,wear
+SensorBufferFlushTest,flush with partial data does not crash,0.0,PASS,wear
+SensorBufferFlushTest,empty buffer produces empty snapshot,0.0,PASS,wear
+SensorBufferFlushTest,60s window produces expected sample counts,1.0,PASS,wear
+SensorBufferFlushTest,flush returns all buffered items,0.0,PASS,wear
+SensorBufferFlushTest,concurrent add and flush simulation,0.0,PASS,wear
+WearDataMapSchemaTest,missing ACC sensor sends empty arrays with flag false,15.0,PASS,wear
+WearDataMapSchemaTest,window DataMap has all required keys,4.0,PASS,wear
+WearDataMapSchemaTest,HR arrays have matching lengths,0.0,PASS,wear
+WearDataMapSchemaTest,missing EDA sensor sends empty arrays with flag false,0.0,PASS,wear
+WearDataMapSchemaTest,mood-only DataMap has required keys,1.0,PASS,wear
+WearDataMapSchemaTest,empty HR buffer produces empty arrays,0.0,PASS,wear
+WearDataMapSchemaTest,mood value clamped to 0-5 range,3.0,PASS,wear
+WearDataMapSchemaTest,EDA arrays have matching lengths,0.0,PASS,wear
+WearDataMapSchemaTest,ACC XYZ arrays have matching lengths,0.0,PASS,wear
+WearDataMapSchemaTest,TEMP arrays have matching lengths,1.0,PASS,wear
+WearDataMapSchemaTest,timestamp is recent epoch millis,0.0,PASS,wear

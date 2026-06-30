@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+// Read SERVER_BASE_URL from local.properties (keeps secrets out of source control)
+val localProps = Properties().also { props ->
+    rootProject.file("local.properties").takeIf { it.exists() }
+        ?.inputStream()?.use { props.load(it) }
+}
+val serverBaseUrl: String = (localProps.getProperty("SERVER_BASE_URL") ?: "")
+    .trim()
+    .ifEmpty { "https://mindwave-production-318e.up.railway.app/" }
 
 android {
     namespace = "com.example.mindwave"
@@ -20,6 +31,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        buildConfigField("String", "SERVER_BASE_URL", "\"$serverBaseUrl\"")
+
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
@@ -33,6 +46,16 @@ android {
                 "proguard-rules.pro"
             )
         }
+        // Profilable build: release-like performance (ART AOT, no debug overhead)
+        // but with debuggable=false and profileable=true so Perfetto / Android Studio
+        // Profiler can attach on both emulator and physical device without root.
+        // Build: ./gradlew :mobile:installProfiling
+        create("profiling") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            isProfileable = true
+            signingConfig = signingConfigs.getByName("debug") // self-sign for sideload
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -43,10 +66,18 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     // TFLite models already compressed
     androidResources {
         noCompress += "tflite"
+    }
+    // tensorflow-lite and tensorflow-lite-select-tf-ops both bundle overlapping native .so files.
+    // Without pickFirst the build fails with "More than one file was found" merge conflicts.
+    packaging {
+        jniLibs.pickFirsts += setOf(
+            "**/*.so",  // broadly pick first for all native libs to resolve tf-lite conflicts
+        )
     }
     testOptions {
         unitTests.isReturnDefaultValues = true

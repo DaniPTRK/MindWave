@@ -14,6 +14,9 @@ interface StressDao {
     @Query("SELECT * FROM stress_readings WHERE timestamp BETWEEN :startTs AND :endTs AND userEmail = :userEmail ORDER BY timestamp DESC")
     fun getByRange(startTs: Long, endTs: Long, userEmail: String): Flow<List<StressReading>>
 
+    @Query("SELECT * FROM stress_readings WHERE timestamp BETWEEN :startTs AND :endTs AND userEmail = :userEmail ORDER BY timestamp DESC")
+    suspend fun getByRangeSync(startTs: Long, endTs: Long, userEmail: String): List<StressReading>
+
     @Query("SELECT * FROM stress_readings WHERE userEmail = :userEmail ORDER BY timestamp DESC LIMIT :n")
     fun getLatest(n: Int, userEmail: String): Flow<List<StressReading>>
 
@@ -40,7 +43,8 @@ interface StressDao {
     @Query("""
         SELECT s.* FROM stress_readings s
         INNER JOIN emotional_journals j ON j.readingId = s.id
-        WHERE j.tags = 'feedback'
+        WHERE j.entryType = 'FEEDBACK'
+          AND j.userMood IN (1, 2, 4, 5)
           AND s.synced = 0
           AND s.featureTensor IS NOT NULL
           AND s.userEmail = :userEmail

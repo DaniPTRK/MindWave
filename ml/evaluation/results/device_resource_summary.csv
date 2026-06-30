@@ -1,0 +1,5 @@
+scope,metric,average,peak,unit
+Inference benchmark,Equivalent occupied CPU cores,1.1942,,cores
+Cold FL run,Equivalent occupied CPU cores,1.4262000000000001,,cores
+Cold FL run,Java heap size counter,12.2474609375,12.3466796875,MiB
+Cold FL run,HWUI All Memory counter,21.107112884521484,21.107112884521484,MiB

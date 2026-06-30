@@ -22,18 +22,6 @@ object FeatureExtractor {
     const val WINDOW_SEC = 60
     const val SUBWINDOW_SEC = 5
 
-    /**
-     * Build the (12, 23) feature tensor from raw buffers.
-     *
-     * @param hrValues    BPM samples (~1 Hz from watch HR callback)
-     * @param tempValues  Skin temperature samples (°C)
-     * @param edaValues   Sweat-loss / EDA proxy samples
-     * @param accX        Raw ACC X samples from Samsung SDK (integer ADC, ~25 Hz)
-     * @param accY        Raw ACC Y samples
-     * @param accZ        Raw ACC Z samples
-     * @return FloatArray of size N_SUBWINDOWS × N_FEATURES in row-major order,
-     *         or null if the input is too short to be meaningful.
-     */
     fun extract(
         hrValues: FloatArray,
         tempValues: FloatArray,
@@ -42,39 +30,162 @@ object FeatureExtractor {
         accY: FloatArray = FloatArray(0),
         accZ: FloatArray = FloatArray(0),
     ): FloatArray? {
-        if (hrValues.size < 5) return null   // need at least 5 HR samples
+        if (hrValues.size < 5) return null
 
-        // Pre-compute band-passed ACC magnitude once for the whole window
-        val accMag = bandpassAccMag(accX, accY, accZ)
+        // Band-pass ACC magnitude, then remove residual DC (gravity) via mean subtraction
+        val accMag = removeDc(bandpassAccMag(accX, accY, accZ))
+
+        // Forward-fill temperature; fall back to 36 °C if no samples arrive
+        val tempFilled: FloatArray = when {
+            tempValues.isEmpty() -> FloatArray(hrValues.size) { 36.0f }
+            tempValues.size >= hrValues.size -> tempValues
+            else -> FloatArray(hrValues.size) { i ->
+                tempValues[minOf(i, tempValues.size - 1)]
+            }
+        }
+
+        // Compute HRV over the full 60 s window and broadcast to all sub-windows
+        val fullWindowHrv = hrvTimeFeatures(hrValues)
+
+        // Low-pass filter the raw EDA buffer to remove Samsung quantization noise
+        val edaFiltered = lowpassEda(edaValues)
+
+        // Bail out to zeros if the signal is noisy/absent
+        val edaQualityOk = edaSignalQualityOk(edaFiltered)
+
+        // Count SCR peaks on the full 60 s z-scored signal
+        val fullWindowEdaZ = if (edaQualityOk) zscoreWindow(edaFiltered) else FloatArray(edaFiltered.size)
+        val fullWindowScrPeaks = if (edaQualityOk) countScrPeaksFullWindow(fullWindowEdaZ) else 0f
+        val fullWindowScrAuc   = if (edaQualityOk) scrAucFullWindow(fullWindowEdaZ)        else 0f
+        val fullWindowScrAmp   = if (edaQualityOk) scrAmpMeanFullWindow(fullWindowEdaZ)    else 0f
 
         val result = FloatArray(N_SUBWINDOWS * N_FEATURES)
 
-        // Distribute samples across 12 sub-windows proportionally
         for (sw in 0 until N_SUBWINDOWS) {
-            val hrSeg  = subwindowSlice(hrValues,   sw, N_SUBWINDOWS)
-            val edaSeg = subwindowSlice(edaValues,  sw, N_SUBWINDOWS)
-            val tmpSeg = subwindowSlice(tempValues, sw, N_SUBWINDOWS)
-            val accSeg = subwindowSlice(accMag,     sw, N_SUBWINDOWS)
+            val edaSeg = subwindowSlice(edaFiltered, sw, N_SUBWINDOWS)
+            val tmpSeg = subwindowSlice(tempFilled,  sw, N_SUBWINDOWS)
+            val accSeg = subwindowSlice(accMag,      sw, N_SUBWINDOWS)
 
             val offset = sw * N_FEATURES
-            // HRV time (indices 0–3)
-            val hrv = hrvTimeFeatures(hrSeg)
-            hrv.copyInto(result, offset)
-            // HRV freq (indices 4–6) — zero-filled (not enough data from 1 Hz HR)
-            // EDA (indices 7–13)
-            val eda = edaFeatures(edaSeg)
-            eda.copyInto(result, offset + 7)
-            // TEMP (indices 14–18)
-            val tmp = tempFeatures(tmpSeg)
-            tmp.copyInto(result, offset + 14)
-            // ACC magnitude (indices 19–22)
-            val acc = accFeatures(accSeg)
-            acc.copyInto(result, offset + 19)
+            fullWindowHrv.copyInto(result, offset)
+            // HRV freq, zeroed out.
+
+            if (edaQualityOk) {
+                // z-score the 5s sub-window to match training
+                val edaSegZ = zscoreWindow(edaSeg)
+                val edaVec = edaFeaturesSubwindow(edaSegZ)
+                // Overwrite indices 4–6 (scr_auc, scr_peaks, scr_amp_mean) with full-window values.
+                edaVec[4] = fullWindowScrAuc
+                edaVec[5] = fullWindowScrPeaks
+                edaVec[6] = fullWindowScrAmp
+                edaVec.copyInto(result, offset + 7)
+            }
+
+            tempFeatures(tmpSeg).copyInto(result, offset + 14)
+            accFeatures(accSeg).copyInto(result, offset + 19)
         }
         return result
     }
 
-    // Subwindow slicing
+    // eda helpers
+
+    /**
+     * Single-pole IIR low-pass at ~0.2 Hz for a ~1 Hz Samsung EDA stream, attenuating
+     * the quantization noise that causes huge oscillations, SCR for example.
+     */
+    private fun lowpassEda(eda: FloatArray): FloatArray {
+        if (eda.size < 2) return eda
+        val alpha = 0.35f
+        val out = FloatArray(eda.size)
+        out[0] = eda[0]
+        for (i in 1 until eda.size) {
+            out[i] = alpha * eda[i] + (1f - alpha) * out[i - 1]
+        }
+        return out
+    }
+
+    /**
+     * Returns false (bad quality) when:
+     *  - fewer than 3 samples (cannot compute meaningful features)
+     *  - full-window range < 0.05 µS (no info)
+     *  - flip rate > 40% of consecutive pairs change direction (Samsung ADC noise)
+     */
+    private fun edaSignalQualityOk(eda: FloatArray): Boolean {
+        if (eda.size < 3) return false
+        val range = eda.max() - eda.min()
+        if (range < 0.05f) return false       // flat / no skin contact
+        val diffs = FloatArray(eda.size - 1) { eda[it + 1] - eda[it] }
+        var flips = 0
+        for (i in 1 until diffs.size) {
+            if (diffs[i] * diffs[i - 1] < 0f) flips++  // sign change between consecutive diffs
+        }
+        val flipRate = flips.toFloat() / (diffs.size - 1).coerceAtLeast(1)
+        return flipRate <= 0.40f   // allow up to 40% direction reversals (real SCR has ringing)
+    }
+
+    /**
+     * Count SCR peaks on the full 60 s z-scored EDA signal, matching the pipeline
+     */
+    private fun countScrPeaksFullWindow(edaZ: FloatArray): Float {
+        if (edaZ.size < 3) return 0f
+        val sorted = edaZ.copyOf().also { it.sort() }
+        val threshold = sorted[(sorted.size * 0.30f).toInt().coerceIn(0, sorted.size - 1)]
+        var peaks = 0
+        for (i in 1 until edaZ.size - 1) {
+            if (edaZ[i] > edaZ[i - 1] && edaZ[i] > edaZ[i + 1] && edaZ[i] > threshold) {
+                peaks++
+            }
+        }
+        return peaks.toFloat()
+    }
+
+    /** AUC of phasic on the full 60 s window (trapezoid approximation). */
+    private fun scrAucFullWindow(edaZ: FloatArray): Float {
+        if (edaZ.size < 2) return 0f
+        val mean = edaZ.average().toFloat()
+        val scr = FloatArray(edaZ.size) { edaZ[it] - mean }
+        // trapezoid: sum of (|y[i]| + |y[i+1]|) / 2 * dt, dt=1 sample => fs
+        var auc = 0f
+        for (i in 1 until scr.size) auc += (abs(scr[i - 1]) + abs(scr[i])) * 0.5f
+        return auc / edaZ.size.coerceAtLeast(1)
+    }
+
+    /** Mean SCR peak amplitude on the full 60 s window. */
+    private fun scrAmpMeanFullWindow(edaZ: FloatArray): Float {
+        if (edaZ.size < 3) return 0f
+        val mean = edaZ.average().toFloat()
+        val scr = FloatArray(edaZ.size) { edaZ[it] - mean }
+        val sorted = edaZ.copyOf().also { it.sort() }
+        val threshold = sorted[(sorted.size * 0.30f).toInt().coerceIn(0, sorted.size - 1)]
+        var ampSum = 0f; var count = 0
+        for (i in 1 until scr.size - 1) {
+            if (scr[i] > scr[i - 1] && scr[i] > scr[i + 1] && scr[i] > threshold) {
+                ampSum += scr[i]; count++
+            }
+        }
+        return if (count > 0) ampSum / count else 0f
+    }
+
+    /**
+     * Per-sub-window EDA features — indices 0–3 only (scl_mean, scl_slope, scr_mean, scr_std).
+     * Indices 4–6 (scr_auc, scr_peaks, scr_amp_mean) are overwritten by the caller with
+     * full-window values, matching the training broadcast of scr_peak_features().
+     */
+    private fun edaFeaturesSubwindow(eda: FloatArray): FloatArray {
+        val out = FloatArray(7)
+        if (eda.size < 3) return out
+        val mean = eda.average().toFloat()   // ≈ 0 after z-scoring
+        out[0] = mean                        // scl_mean
+        out[1] = linearSlope(eda)            // scl_slope
+        val scr = FloatArray(eda.size) { eda[it] - mean }
+        out[2] = scr.average().toFloat()     // scr_mean
+        out[3] = scr.stdDev()               // scr_std
+        // out[4..6] filled by caller with full-window broadcast values
+        return out
+    }
+
+    // helpers
+
     private fun subwindowSlice(arr: FloatArray, sw: Int, total: Int): FloatArray {
         if (arr.isEmpty()) return FloatArray(0)
         val start = (arr.size.toLong() * sw / total).toInt()
@@ -82,7 +193,28 @@ object FeatureExtractor {
         return arr.copyOfRange(start.coerceAtLeast(0), end.coerceAtMost(arr.size))
     }
 
-    // HRV time feats
+    /**
+     * Z-score a 1-D signal to mean=0 std=1, matching nk.standardize() used in pipeline.
+     */
+    private fun zscoreWindow(arr: FloatArray): FloatArray {
+        if (arr.size < 2) return FloatArray(arr.size)
+        val m = arr.average().toFloat()
+        val s = arr.stdDev()
+        if (s == 0f) return FloatArray(arr.size)
+        return FloatArray(arr.size) { (arr[it] - m) / s }
+    }
+
+    /**
+     * Subtract the per-window mean from the band-passed ACC magnitude to eliminate
+     * any residual DC offset.  Training acc_mag_mean is ~0 by construction.
+     */
+    private fun removeDc(arr: FloatArray): FloatArray {
+        if (arr.isEmpty()) return arr
+        val m = arr.average().toFloat()
+        return FloatArray(arr.size) { arr[it] - m }
+    }
+
+    // HRV time features
     private fun hrvTimeFeatures(bpmSamples: FloatArray): FloatArray {
         val out = FloatArray(4)
         if (bpmSamples.size < 3) return out
@@ -90,75 +222,34 @@ object FeatureExtractor {
         out[0] = rr.average().toFloat()
         out[1] = rr.stdDev()
         val diffs = FloatArray(rr.size - 1) { abs(rr[it + 1] - rr[it]) }
-        out[2] = if (diffs.isEmpty()) 0f else
-            sqrt(diffs.map { it * it }.average()).toFloat()
-        out[3] = if (diffs.isEmpty()) 0f else
-            diffs.count { it > 50f }.toFloat() / diffs.size * 100f
+        out[2] = if (diffs.isEmpty()) 0f else sqrt(diffs.map { it * it }.average()).toFloat()
+        out[3] = if (diffs.isEmpty()) 0f else diffs.count { it > 50f }.toFloat() / diffs.size * 100f
         return out
     }
 
-    // EDA features, simplified tonic/phasic
-    private fun edaFeatures(eda: FloatArray): FloatArray {
-        val out = FloatArray(7)
-        if (eda.size < 3) return out
-        val mean = eda.average().toFloat()
-        // Tonic (SCL) ≈ mean level and slope of the signal
-        out[0] = mean
-        out[1] = linearSlope(eda)
-        // Phasic (SCR) ≈ signal minus its mean
-        val scr = FloatArray(eda.size) { eda[it] - mean }
-        out[2] = scr.average().toFloat()
-        out[3] = scr.stdDev()
-        out[4] = scr.map { abs(it) }.sum() / eda.size
-        // SCR peaks = zero-crossings of derivative above zero
-        var peaks = 0
-        var ampSum = 0f
-        for (i in 1 until scr.size - 1) {
-            if (scr[i] > scr[i - 1] && scr[i] > scr[i + 1] && scr[i] > 0.01f) {
-                peaks++
-                ampSum += scr[i]
-            }
-        }
-        out[5] = peaks.toFloat()                            // scr_peaks
-        out[6] = if (peaks > 0) ampSum / peaks else 0f     // scr_amp_mean
-        return out
-    }
-
-    // Temp feats
+    // Temp features
     private fun tempFeatures(temp: FloatArray): FloatArray {
         val out = FloatArray(5)
         if (temp.isEmpty()) return out
-        out[0] = temp.average().toFloat()                   // mean
-        out[1] = temp.stdDev()                              // std
-        out[2] = linearSlope(temp)                          // slope
-        out[3] = temp.min()                                 // min
-        out[4] = temp.max()                                 // max
+        out[0] = temp.average().toFloat()
+        out[1] = temp.stdDev()
+        out[2] = linearSlope(temp)
+        out[3] = temp.min()
+        out[4] = temp.max()
         return out
     }
 
-    // ACC magnitude feats
-
     /**
-     * Compute tri-axial magnitude, then apply a 4th-order Butterworth band-pass
-     * (0.5–10 Hz, mirroring preprocessing.py:filter_acc_mag) using a cascade of
-     * two biquad sections derived from the bilinear transform at fs = 25 Hz.
-     *
-     * Samsung SDK delivers ACC as raw integer ADC values; we cast to Float first.
+     * Band-pass ACC magnitude 0.5–10 Hz at fs=25 Hz (recreates Butterworth filter).
      */
-    private fun bandpassAccMag(
-        xArr: FloatArray, yArr: FloatArray, zArr: FloatArray,
-    ): FloatArray {
+    private fun bandpassAccMag(xArr: FloatArray, yArr: FloatArray, zArr: FloatArray): FloatArray {
         val n = minOf(xArr.size, yArr.size, zArr.size)
         if (n == 0) return FloatArray(0)
-        // Magnitude
         val mag = FloatArray(n) { i ->
             val x = xArr[i]; val y = yArr[i]; val z = zArr[i]
             sqrt(x * x + y * y + z * z)
         }
-        if (n < 9) return mag  // too short to filter safely
-        // 4th-order Butterworth band-pass 0.5–10 Hz at fs=25 Hz, SOS form.
-        // Coefficients pre-computed with scipy.signal.butter(4,(0.5,10),btype='band',fs=25,output='sos')
-        // Section 0: b0,b1,b2, a1,a2  (a0 = 1 normalised)
+        if (n < 9) return mag
         val sos = arrayOf(
             floatArrayOf( 0.06745527f,  0.0f,        -0.06745527f, -1.56928973f,  0.72577947f),
             floatArrayOf( 1.0f,        -2.0f,          1.0f,        -1.87516732f,  0.91487519f),
@@ -181,30 +272,22 @@ object FeatureExtractor {
         return x
     }
 
-    /**
-     * ACC magnitude features matching ml/src/features.py:acc_features().
-     *   [0] mag_mean   — mean of band-passed magnitude
-     *   [1] mag_std    — std-dev
-     *   [2] mag_energy — mean squared value
-     *   [3] zcr        — zero-crossing rate of mean-centred signal
-     */
     private fun accFeatures(accMag: FloatArray): FloatArray {
         val out = FloatArray(4)
         if (accMag.isEmpty()) return out
-        out[0] = accMag.average().toFloat() // mag_mean
-        out[1] = accMag.stdDev() // mag_std
-        out[2] = accMag.map { it * it }.average().toFloat()  // mag_energy
-
+        out[0] = accMag.average().toFloat()                         // mag_mean (≈0 after DC removal)
+        out[1] = accMag.stdDev()                                    // mag_std
+        out[2] = accMag.map { it * it }.average().toFloat()         // mag_energy
         val mean = out[0]
         var zc = 0
         for (i in 1 until accMag.size) {
             if ((accMag[i] - mean >= 0f) != (accMag[i - 1] - mean >= 0f)) zc++
         }
-        out[3] = if (accMag.size > 1) zc.toFloat() / accMag.size else 0f // zcr
+        out[3] = if (accMag.size > 1) zc.toFloat() / accMag.size else 0f  // zcr
         return out
     }
 
-    // helpers
+    // Math helpers
     private fun FloatArray.stdDev(): Float {
         if (size < 2) return 0f
         val m = average()
@@ -218,8 +301,7 @@ object FeatureExtractor {
         val n = arr.size
         val xMean = (n - 1) / 2.0
         val yMean = arr.average()
-        var num = 0.0
-        var den = 0.0
+        var num = 0.0; var den = 0.0
         for (i in arr.indices) {
             num += (i - xMean) * (arr[i] - yMean)
             den += (i - xMean) * (i - xMean)
@@ -227,4 +309,3 @@ object FeatureExtractor {
         return if (den == 0.0) 0f else (num / den).toFloat()
     }
 }
-

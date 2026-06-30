@@ -1,0 +1,7 @@
+scope,metric,value,unit,notes
+Inference benchmark,App CPU time,18172.70,ms,CPU time summed across MindWave threads
+Inference benchmark,Trace duration,15217.05,ms,Wall-clock trace interval
+Inference benchmark,Average one-core utilization,119.42,percent,Equivalent to approximately 1.19 fully occupied CPU cores
+Cold FL run,App CPU time,367.61,ms,CPU time summed across MindWave threads during the local FL interval
+Cold FL run,Local wall time,257.75,ms,Load through weight-save interval; upload excluded
+Cold FL run,Average one-core utilization,142.62,percent,Equivalent to approximately 1.43 fully occupied CPU cores

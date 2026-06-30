@@ -49,8 +49,17 @@ object WearDataSender {
         val hr = ArrayList(SensorForegroundService.hrBuffer).also {
             SensorForegroundService.hrBuffer.clear()
         }
-        val temp = ArrayList(SensorForegroundService.tempBuffer).also {
+        var temp = ArrayList(SensorForegroundService.tempBuffer).also {
             SensorForegroundService.tempBuffer.clear()
+        }
+        // If the temp buffer is empty (sensor didn't fire this window) inject the
+        // last known temperature so the feature extractor doesn't fall back to 36.0°C.
+        if (temp.isEmpty()) {
+            val lastTemp = com.example.mindwave.data.SensorDebugState.lastKnownTempC.value
+            if (lastTemp > 0.0) {
+                temp = arrayListOf(TimestampedValue(System.currentTimeMillis(), lastTemp))
+                Log.d(TAG, "Temp buffer empty — injecting last known temp: ${"%.2f".format(lastTemp)}°C")
+            }
         }
         val eda = ArrayList(SensorForegroundService.edaBuffer).also {
             SensorForegroundService.edaBuffer.clear()
@@ -70,6 +79,16 @@ object WearDataSender {
             return
         }
 
+        // Samsung Galaxy Watch ACC values are in mg (milligravity) from the SDK.
+        // 1000 mg = 1 g. Convert to g so features match WESAD training scale (WESAD ACC is in g).
+        val ACC_SCALE = 1000f
+        val accXG = accX.map { it.value.toFloat() / ACC_SCALE }.toFloatArray()
+        val accYG = accY.map { it.value.toFloat() / ACC_SCALE }.toFloatArray()
+        val accZG = accZ.map { it.value.toFloat() / ACC_SCALE }.toFloatArray()
+
+        Log.i(TAG, "Sending window: HR=${hr.size} TEMP=${temp.size} EDA=${eda.size} ACC=${accX.size}" +
+            if (temp.isNotEmpty()) " tempMean=${"%.2f".format(temp.map{it.value}.average())}°C" else " (no temp)")
+
         val request = PutDataMapRequest.create(DATA_PATH).apply {
             dataMap.putLong("timestamp", System.currentTimeMillis())
             dataMap.putLongArray("hr_times", hr.map { it.epochMs }.toLongArray())
@@ -78,9 +97,9 @@ object WearDataSender {
             dataMap.putFloatArray("temp_values", temp.map { it.value.toFloat() }.toFloatArray())
             dataMap.putLongArray("eda_times", eda.map { it.epochMs }.toLongArray())
             dataMap.putFloatArray("eda_values", eda.map { it.value.toFloat() }.toFloatArray())
-            dataMap.putFloatArray("acc_x_values", accX.map { it.value.toFloat() }.toFloatArray())
-            dataMap.putFloatArray("acc_y_values", accY.map { it.value.toFloat() }.toFloatArray())
-            dataMap.putFloatArray("acc_z_values", accZ.map { it.value.toFloat() }.toFloatArray())
+            dataMap.putFloatArray("acc_x_values", accXG)
+            dataMap.putFloatArray("acc_y_values", accYG)
+            dataMap.putFloatArray("acc_z_values", accZG)
             dataMap.putBoolean("eda_available", SensorForegroundService.edaAvailable.value)
             dataMap.putBoolean("acc_available", SensorForegroundService.accAvailable.value)
             dataMap.putInt("mood", userMood)
@@ -121,15 +140,16 @@ object WearDataSender {
     }
 
     /**
-     * Quick-reply mood log from the watch
-     * @param mood 1 (very calm) – 5 (very stressed)
+     * Quick-reply mood log from the watch.
+     * @param mood 1/2 = stressed, 3 = not sure, 4/5 = not stressed
      */
-    suspend fun sendMood(context: Context, mood: Int) {
+    suspend fun sendMood(context: Context, mood: Int, readingId: Long = 0L) {
         val dataClient: DataClient = Wearable.getDataClient(context)
         val request = PutDataMapRequest.create(DATA_PATH).apply {
             dataMap.putLong("timestamp", System.currentTimeMillis())
             dataMap.putInt("mood", mood)
             dataMap.putBoolean("mood_only", true)
+            dataMap.putLong("reading_id", readingId)
             dataMap.putLong("_nonce", System.nanoTime())
         }
         request.setUrgent()

@@ -19,8 +19,11 @@ class ScalerNormalizer private constructor(
     private val scale: FloatArray,
 ) {
     /**
-     * Standardise a (N_SUBWINDOWS x N_FEATURES) row-major feature tensor in place
-     * of a copy.
+     * Standardise a (N_SUBWINDOWS x N_FEATURES) row-major feature tensor.
+     *
+     * After z-scoring we clamp to [-3, 3] to prevent extreme outliers (caused by
+     * the Samsung 1 Hz BPM stream being out of distribution vs the WESAD
+     * E4 BVP stream the scaler was fit on).
      */
     fun normalize(features: FloatArray): FloatArray {
         val f = mean.size
@@ -32,7 +35,9 @@ class ScalerNormalizer private constructor(
         for (i in features.indices) {
             val j = i % f
             val s = if (scale[j] == 0f) 1f else scale[j]
-            out[i] = (features[i] - mean[j]) / s
+            val z = (features[i] - mean[j]) / s
+            // Clamp to +-3 deviations, so we keep the model in distribution.
+            out[i] = z.coerceIn(-3f, 3f)
         }
         return out
     }

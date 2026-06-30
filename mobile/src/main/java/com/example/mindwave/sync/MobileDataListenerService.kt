@@ -1,9 +1,10 @@
-package com.example.mindwave.sync
+﻿package com.example.mindwave.sync
 
 import android.content.Context
 import android.util.Log
 import com.example.mindwave.data.AuthRepository
 import com.example.mindwave.data.EmotionalJournal
+import com.example.mindwave.data.JournalEntryType
 import com.example.mindwave.data.MindWaveDatabase
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
@@ -57,20 +58,27 @@ class MobileDataListenerService : WearableListenerService() {
             if (map.getBoolean("mood_only", false)) {
                 val mood = map.getInt("mood", 0)
                 val ts = map.getLong("timestamp", System.currentTimeMillis())
+                val readingId = map.getLong("reading_id", 0L)
                 if (mood in 1..5) {
                     scope.launch {
                         val email = AuthRepository(applicationContext).getEmail() ?: ""
+                        val isBinaryFeedback = readingId > 0L && mood != 3
                         MindWaveDatabase.getInstance(applicationContext).journalDao().insert(
                             EmotionalJournal(
-                                readingId = null,
+                                readingId = readingId.takeIf { it > 0L },
                                 timestamp = ts,
                                 userMood = mood,
-                                note = "",
-                                tags = "watch_quick_reply",
+                                note = when {
+                                    isBinaryFeedback && mood <= 2 -> "Confirmed stress"
+                                    isBinaryFeedback -> "Not stressed"
+                                    else -> "Not sure"
+                                },
+                                tags = if (isBinaryFeedback) "feedback" else "watch_quick_reply",
+                                entryType = if (isBinaryFeedback) JournalEntryType.FEEDBACK else JournalEntryType.WATCH_MOOD,
                                 userEmail = email,
                             )
                         )
-                        Log.i(TAG, "Stored watch mood quick-reply: $mood")
+                        Log.i(TAG, "Stored watch quick-reply: mood=$mood readingId=$readingId feedback=$isBinaryFeedback")
                     }
                 }
                 continue
@@ -89,8 +97,28 @@ class MobileDataListenerService : WearableListenerService() {
                 accZValues = map.getFloatArray("acc_z_values") ?: floatArrayOf(),
                 mood       = map.getInt("mood", 0),
             )
-            Log.i(TAG, "Received sensor window: HR=${window.hrValues.size} samples")
+
+            // Single consolidated log per window
+            val hrMean   = if (window.hrValues.isNotEmpty()) window.hrValues.average() else 0.0
+            val tempMean = if (window.tempValues.isNotEmpty()) window.tempValues.average() else 0.0
+            val edaMean  = if (window.edaValues.isNotEmpty()) window.edaValues.average() else 0.0
+            Log.i(TAG, "â–¶ Window received | " +
+                "HR=${window.hrValues.size}smp (avg=${"%.0f".format(hrMean)} bpm) | " +
+                "TEMP=${window.tempValues.size}smp (avg=${"%.1f".format(tempMean)}Â°C) | " +
+                "EDA=${window.edaValues.size}smp (avg=${"%.2f".format(edaMean)} ÂµS) | " +
+                "ACC=${window.accXValues.size}smp | mood=${window.mood}")
+
+            // Update phone-side connection state so UI can show watch is connected + last data
+            WatchConnectionState.recordWindowReceived(
+                window.hrValues.size,
+                window.tempValues.size,
+                window.edaValues.size,
+                window.accXValues.size,
+            )
+
             onWindowReceived?.invoke(window)
         }
     }
 }
+
+

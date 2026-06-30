@@ -48,11 +48,21 @@ fun StressDetailScreen(
     }
 
     val stressProb = reading.stressProbStress
-    val stressLabel = when {
-        stressProb > 0.85f -> "Critical"
-        stressProb > 0.7f -> "High"
-        stressProb > 0.5f -> "Elevated"
-        else -> "Relaxed"
+    // Likelihood-based language, not intensity claims
+    val likelihoodLabel = when {
+        stressProb > 0.85f -> "Stress very likely"
+        stressProb > 0.7f  -> "Stress likely"
+        stressProb > 0.5f  -> "Elevated likelihood"
+        else               -> "Stress unlikely"
+    }
+    val headerTitle = when {
+        stressProb > 0.7f  -> "High stress likelihood"
+        stressProb > 0.5f  -> "Elevated stress likelihood"
+        else               -> "Low stress likelihood"
+    }
+    val headerIcon = when {
+        stressProb > 0.5f -> Icons.Filled.Warning
+        else -> Icons.Filled.Watch
     }
     val stressColor = when {
         stressProb > 0.85f -> Color(0xFFE74C3C)
@@ -87,13 +97,13 @@ fun StressDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Warning,
-                        contentDescription = "Warning",
+                        imageVector = headerIcon,
+                        contentDescription = headerTitle,
                         modifier = Modifier.size(28.dp),
                         tint = stressColor,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Stress spike detected",
+                    Text(headerTitle,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = stressColor)
@@ -107,10 +117,19 @@ fun StressDetailScreen(
                     color = stressColor,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
-                Text(stressLabel,
+                Text(
+                    likelihoodLabel,
                     modifier = Modifier.fillMaxWidth(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Model confidence that this window belongs to the stress class",
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
@@ -124,7 +143,7 @@ fun StressDetailScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("What triggered this?",
+                    Text("What influenced this prediction?",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(12.dp))
@@ -304,16 +323,16 @@ private fun StressEmptyState() {
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            "No stress data yet",
+            "No readings yet",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Connect your smartwatch to start streaming heart-rate, EDA and " +
-                "temperature data. Your stress insights and explanations will " +
-                "appear here once readings come in.",
+            "Connect your smartwatch to start streaming sensor data. " +
+                "Once readings arrive, the model will estimate your stress likelihood " +
+                "and explain what influenced the prediction.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,

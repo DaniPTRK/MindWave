@@ -20,6 +20,7 @@ from typing import Iterable
 import joblib
 import numpy as np
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -109,17 +110,35 @@ def train_one_fold(
     label_names: dict | None = None,
 ):
     scaler = fit_scaler_3d(X_train)
-    Xtr = apply_scaler_3d(scaler, X_train)
+    Xtr_all = apply_scaler_3d(scaler, X_train)
     Xte = apply_scaler_3d(scaler, X_test)
 
-    # Augment training set: original + one noisy copy
+    # Early stopping must not look at the held-out subject.
+    # Build a small validation split only from the training side of the fold.
+    indices = np.arange(y_train.shape[0])
+    stratify = y_train if len(np.unique(y_train)) > 1 else None
+    try:
+        train_idx, val_idx = train_test_split(
+            indices, test_size=0.15, random_state=42, stratify=stratify
+        )
+    except ValueError:
+        train_idx, val_idx = train_test_split(
+            indices, test_size=0.15, random_state=42
+        )
+
+    Xtr = Xtr_all[train_idx]
+    y_fit = y_train[train_idx]
+    Xval = Xtr_all[val_idx]
+    y_val = y_train[val_idx]
+
+    # Augment training set: original + one noisy copy. Validation stays untouched.
     rng = np.random.default_rng(42)
-    Xtr_aug, y_aug = _augment_windows(Xtr, y_train, noise_std=0.05, rng=rng)
+    Xtr_aug, y_aug = _augment_windows(Xtr, y_fit, noise_std=0.05, rng=rng)
     Xtr = np.concatenate([Xtr, Xtr_aug], axis=0)
-    y_train = np.concatenate([y_train, y_aug], axis=0)
+    y_fit = np.concatenate([y_fit, y_aug], axis=0)
 
     classes = np.arange(n_classes)
-    cw = compute_class_weight("balanced", classes=classes, y=y_train)
+    cw = compute_class_weight("balanced", classes=classes, y=y_fit)
     class_weight = {int(c): float(w) for c, w in zip(classes, cw)}
 
     model = build_lstm(input_shape=Xtr.shape[1:], n_classes=n_classes)
@@ -132,8 +151,8 @@ def train_one_fold(
         ),
     ]
     history = model.fit(
-        Xtr, y_train,
-        validation_data=(Xte, y_test),
+        Xtr, y_fit,
+        validation_data=(Xval, y_val),
         epochs=epochs, batch_size=batch_size,
         class_weight=class_weight,
         callbacks=callbacks, verbose=verbose,

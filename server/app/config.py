@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     api_base_url: str = Field(default="http://api:8000", alias="API_BASE_URL")
     
     # Minimum clients needed before HTTP-based FedAvg fires (1 = single-device demo)
-    fl_min_clients_for_aggregation: int = Field(default=1, alias="FL_MIN_CLIENTS_FOR_AGGREGATION")
+    fl_min_clients_for_aggregation: int = Field(default=3, alias="FL_MIN_CLIENTS_FOR_AGGREGATION")
+    fl_round_interval_minutes: int = Field(default=60, alias="FL_ROUND_INTERVAL_MINUTES")
+    fl_round_max_extensions: int = Field(default=1, alias="FL_ROUND_MAX_EXTENSIONS")
 
     # storage
     models_dir: str = Field(default="/models")

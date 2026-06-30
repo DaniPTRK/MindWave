@@ -1,0 +1,4 @@
+round,clients,parameter_bytes_per_direction_per_client,upload_bytes,download_bytes,total_bytes
+1,12,144264,1731168,1731168,3462336
+2,12,144264,1731168,1731168,3462336
+3,12,144264,1731168,1731168,3462336

@@ -1,0 +1,10 @@
+property,value
+run_mode,smoke
+platform,Windows-11-10.0.26100-SP0
+python,3.12.10
+tensorflow,2.21.0
+numpy,2.4.6
+subjects,"S2, S3, S4"
+windows,334
+input_shape,"(12, 23)"
+evaluation_note,Desktop research evaluation; not physical-device profiling

@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 /**
  * Navigation routes for the MindWave app.
  *
- * Bottom nav: Today · Insights · History · Journal · Profile
+ * Bottom nav: Today - Insights - History - Journal - Profile
  * Secondary:  Breathing, StressDetail, SensorStatus
  */
 sealed class Screen(val route: String) {
@@ -29,6 +29,7 @@ sealed class Screen(val route: String) {
     // secondary screens
     object Breathing     : Screen("breathing")
     object SensorStatus  : Screen("sensor_status")
+    object Benchmark     : Screen("benchmark")
     object StressDetail  : Screen("stress_detail/{readingId}") {
         const val ARG_READING_ID = "readingId"
         fun createRoute(readingId: Long) = "stress_detail/$readingId"

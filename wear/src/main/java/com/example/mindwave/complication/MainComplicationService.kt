@@ -16,15 +16,15 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
-        return createComplicationData("42%", "Stress level 42%")
+        return createComplicationData("42%", "Stress likelihood 42%")
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
         val snapshot = WatchStressStore.load(this)
         return if (snapshot.hasData) {
-            createComplicationData("${snapshot.percent}%", "Stress level ${snapshot.percent}%")
+            createComplicationData("${snapshot.percent}%", "Stress likelihood ${snapshot.percent}%")
         } else {
-            createComplicationData("--", "No stress data yet")
+            createComplicationData("--", "No readings yet")
         }
     }
 

@@ -5,6 +5,12 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+object JournalEntryType {
+    const val JOURNAL = "JOURNAL"
+    const val FEEDBACK = "FEEDBACK"
+    const val WATCH_MOOD = "WATCH_MOOD"
+}
+
 /**
  * User-initiated emotional journal entry (akin to feedback, but more general).
  *
@@ -19,7 +25,7 @@ import androidx.room.PrimaryKey
         childColumns = ["readingId"],
         onDelete = ForeignKey.SET_NULL
     )],
-    indices = [Index("readingId"), Index("userEmail")]
+    indices = [Index("readingId"), Index("userEmail"), Index("entryType")]
 )
 data class EmotionalJournal(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -27,6 +33,7 @@ data class EmotionalJournal(
     val timestamp: Long,
     val userMood: Int, // 1 (very stressed / sad) – 5 (very happy / calm)
     val note: String = "",
-    val tags: String = "", // comma separated, for ex "work,meeting,tired"
+    val tags: String = "", // e.g. "feedback", "watch_quick_reply"
+    val entryType: String = JournalEntryType.JOURNAL,
     val userEmail: String = "", // owner, entries are only shown to the account that created them
 )

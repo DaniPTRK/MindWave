@@ -20,8 +20,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         XaiExplanation::class,
         EmotionalJournal::class,
         ContextEvent::class,
+        LatencyRecord::class,
     ],
-    version = 4,
+    version = 7,
     exportSchema = true
 )
 abstract class MindWaveDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class MindWaveDatabase : RoomDatabase() {
     abstract fun xaiDao(): XaiDao
     abstract fun journalDao(): JournalDao
     abstract fun contextDao(): ContextDao
+    abstract fun latencyDao(): LatencyDao
 
     companion object {
         @Volatile
@@ -66,6 +68,73 @@ abstract class MindWaveDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS latency_records (
+                        id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        windowId    INTEGER NOT NULL,
+                        receivedAt  INTEGER NOT NULL DEFAULT 0,
+                        featuresAt  INTEGER NOT NULL DEFAULT 0,
+                        normalizedAt INTEGER NOT NULL DEFAULT 0,
+                        inferenceAt INTEGER NOT NULL DEFAULT 0,
+                        xaiAt       INTEGER NOT NULL DEFAULT 0,
+                        roomAt      INTEGER NOT NULL DEFAULT 0,
+                        alertAt     INTEGER NOT NULL DEFAULT 0,
+                        isWarmup    INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_latency_records_windowId ON latency_records(windowId)"
+                )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Replaces the old epoch-ms timestamp schema (receivedAt, featuresAt, …)
+                // with the new µs-duration schema (featureUs, normalizeUs, … totalUs).
+                database.execSQL("DROP TABLE IF EXISTS latency_records")
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS latency_records (
+                        id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        windowId    INTEGER NOT NULL,
+                        featureUs   INTEGER NOT NULL DEFAULT 0,
+                        normalizeUs INTEGER NOT NULL DEFAULT 0,
+                        inferenceUs INTEGER NOT NULL DEFAULT 0,
+                        xaiUs       INTEGER NOT NULL DEFAULT 0,
+                        roomUs      INTEGER NOT NULL DEFAULT 0,
+                        alertUs     INTEGER NOT NULL DEFAULT 0,
+                        totalUs     INTEGER NOT NULL DEFAULT 0,
+                        isWarmup    INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_latency_records_windowId ON latency_records(windowId)"
+                )
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE emotional_journals ADD COLUMN entryType TEXT NOT NULL DEFAULT 'JOURNAL'"
+                )
+                database.execSQL(
+                    "UPDATE emotional_journals SET entryType = 'FEEDBACK' WHERE tags = 'feedback'"
+                )
+                database.execSQL(
+                    "UPDATE emotional_journals SET entryType = 'WATCH_MOOD' WHERE tags = 'watch_quick_reply'"
+                )
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_emotional_journals_entryType ON emotional_journals(entryType)"
+                )
+            }
+        }
         fun getInstance(context: Context): MindWaveDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -73,7 +142,7 @@ abstract class MindWaveDatabase : RoomDatabase() {
                     MindWaveDatabase::class.java,
                     "mindwave.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build().also { INSTANCE = it }
             }
     }

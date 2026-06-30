@@ -1,0 +1,10 @@
+property,value
+run_mode,full
+platform,Windows-11-10.0.26100-SP0
+python,3.12.10
+tensorflow,2.21.0
+numpy,2.4.6
+subjects,"S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S13, S14, S15, S16, S17"
+windows,1738
+input_shape,"(12, 23)"
+evaluation_note,Desktop research evaluation; not physical-device profiling

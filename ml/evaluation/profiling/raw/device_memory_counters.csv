@@ -1,0 +1,6 @@
+counter,unit,samples,minimum,average,peak,scope
+HWUI All Memory,bytes,15,22132412,22132412,22132412,Cold FL interval
+HWUI CPU Memory,bytes,15,341414,341414,341414,Cold FL interval
+HWUI Misc Memory,bytes,15,19609636,19609636,19609636,Cold FL interval
+HWUI Texture Memory,bytes,15,2181362,2181362,2181362,Cold FL interval
+Heap size,KB,10,12415,12541.4,12643,Cold FL interval

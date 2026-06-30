@@ -1,0 +1,16 @@
+payload,field,type,category,raw_biometric
+FL weight upload,weights_file (binary),averaged model tensors,model-derived,no
+FL round summary,round,int,metadata,no
+FL round summary,num_clients,int,metadata,no
+FL round summary,mean_loss,float,model-derived,no
+FL round summary,mean_accuracy,float,model-derived,no
+FL round summary,weights_filename,str,metadata,no
+HR aggregate,mean_stress_score,"float (k-anon, n>=5)",aggregate,no
+HR aggregate,std_stress,"float (k-anon, n>=5)",aggregate,no
+HR aggregate,n_users,int (>=5 enforced),metadata,no
+Journal entry,(NOT uploaded),stays on device,NOT transmitted,no
+Feature tensor (12×23),(NOT uploaded),stays on device,NOT transmitted,no
+Per-window prediction,(NOT uploaded),stays on device,NOT transmitted,no
+Raw BVP signal,(NOT uploaded),stays on device,NOT transmitted,no
+Raw EDA signal,(NOT uploaded),stays on device,NOT transmitted,no
+SCAN,server raw-signal field defs,0 matches,audit,no

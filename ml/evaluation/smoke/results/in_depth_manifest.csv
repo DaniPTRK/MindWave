@@ -1,0 +1,24 @@
+artifact,kind,description
+ml\evaluation\smoke\results\indepth_class_balance_by_subject.csv,table,Class balance for subjects included in the in-depth evaluation
+ml\evaluation\smoke\results\indepth_environment.csv,table,"Software, dataset, and execution environment"
+ml\evaluation\smoke\plots\indepth_class_balance_by_subject.png,plot,Class balance by evaluated WESAD subject
+ml\evaluation\smoke\results\nested_loso_subject_splits.csv,table,Outer test and inner validation subjects for each corrected LOSO fold
+ml\evaluation\smoke\results\nested_loso_fold_metrics.csv,table,Per-subject metrics for every model under corrected nested LOSO
+ml\evaluation\smoke\results\nested_loso_oof_predictions.csv,table,Out-of-fold probabilities from untouched outer test subjects
+ml\evaluation\smoke\results\nested_loso_model_comparison.csv,table,Comparable model-family results from concatenated outer-fold predictions
+ml\evaluation\smoke\plots\nested_loso_model_comparison.png,plot,Mean and subject-level variation for each evaluated model family
+ml\evaluation\smoke\plots\nested_loso_lstm_by_subject.png,plot,Corrected LSTM accuracy and macro-F1 by outer test subject
+ml\evaluation\smoke\results\nested_loso_threshold_sweep.csv,table,Threshold sensitivity computed only from corrected out-of-fold LSTM probabilities
+ml\evaluation\smoke\results\nested_loso_calibration_bins.csv,table,Reliability-curve bins for corrected out-of-fold LSTM probabilities
+ml\evaluation\smoke\plots\nested_loso_confusion_matrices.png,plot,Corrected out-of-fold LSTM confusion matrices at 0.50 and 0.85
+ml\evaluation\smoke\plots\nested_loso_roc_pr.png,plot,ROC and precision-recall curves from corrected out-of-fold LSTM predictions
+ml\evaluation\smoke\plots\nested_loso_calibration_threshold.png,plot,Reliability diagram and threshold sensitivity for corrected LSTM probabilities
+ml\evaluation\smoke\results\nested_loso_sensor_ablation_by_subject.csv,table,Per-subject mean-masking ablation results using outer-fold LSTM models
+ml\evaluation\smoke\results\nested_loso_sensor_ablation.csv,table,Aggregate subject-independent sensor-group ablation results
+ml\evaluation\smoke\plots\nested_loso_sensor_ablation.png,plot,Out-of-fold LSTM accuracy drop after mean masking each sensor group
+ml\evaluation\smoke\results\personalization_by_subject.csv,table,Per-subject performance before and after simulated feedback fine-tuning
+ml\evaluation\smoke\results\personalization_summary.csv,table,Average effect of different simulated feedback budgets
+ml\evaluation\smoke\plots\personalization_feedback_budgets.png,plot,Performance before and after simulated local personalization
+ml\evaluation\smoke\results\controlled_fl_vs_centralized.csv,table,Centralized and sample-weighted FedAvg results under a shared held-out-subject protocol
+ml\evaluation\smoke\results\controlled_fl_communication.csv,table,Float32 parameter communication cost for the controlled FedAvg experiment
+ml\evaluation\smoke\plots\controlled_fl_vs_centralized.png,plot,Controlled centralized versus sample-weighted FedAvg performance

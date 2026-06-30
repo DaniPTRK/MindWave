@@ -2,8 +2,10 @@ package com.example.mindwave.data
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.mindwave.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -11,19 +13,25 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
+private const val TAG = "AuthRepository"
 private const val PREFS_FILE = "mindwave_auth"
 private const val KEY_TOKEN = "access_token"
 private const val KEY_REFRESH_TOKEN = "refresh_token"
 private const val KEY_EMAIL = "account_email"
+
+/** Sentinel values that identify an offline/anonymous session. */
+const val OFFLINE_EMAIL = "offline@local"
+private const val OFFLINE_TOKEN = "offline_token"
 
 class AuthRepository(context: Context) {
 
     companion object {
         /**
          * Base URL of the MindWave FastAPI server.
-         * 10.0.2.2 is the emulator loopback to dev machine localhost.
+         * SERVER_BASE_URL is set in local.properties and it represents the public URL of the
+         * backend server.
          */
-        const val BASE_URL = "http://10.0.2.2:8000" // todo: make configurable / change for prod
+        val BASE_URL: String = BuildConfig.SERVER_BASE_URL.trimEnd('/')
     }
 
     private val masterKey = MasterKey.Builder(context)
@@ -49,6 +57,20 @@ class AuthRepository(context: Context) {
         .remove(KEY_REFRESH_TOKEN)
         .remove(KEY_EMAIL)
         .apply()
+
+    fun isOfflineUser(): Boolean = prefs.getString(KEY_EMAIL, null) == OFFLINE_EMAIL
+
+    /**
+     * Creates a purely local session.
+     * All data is stored under the [OFFLINE_EMAIL] key in Room.
+     */
+    fun loginOffline() {
+        prefs.edit()
+            .putString(KEY_TOKEN, OFFLINE_TOKEN)
+            .putString(KEY_REFRESH_TOKEN, "")
+            .putString(KEY_EMAIL, OFFLINE_EMAIL)
+            .apply()
+    }
 
     /**
      * Decode JWT to check expiry.
@@ -117,10 +139,16 @@ class AuthRepository(context: Context) {
      * Ensure the access token is valid. If expired or expiring soon, refresh it.
      * Call this before any API call that requires authentication.
      */
-    suspend fun ensureValidToken() {
-        if (isTokenExpired()) {
-            refreshToken().getOrNull()
+    suspend fun ensureValidToken(): Result<Unit> {
+        if (!isTokenExpired()) return Result.success(Unit)
+        val result = refreshToken()
+        if (result.isFailure) {
+            Log.w(TAG, "Token refresh failed: ${result.exceptionOrNull()?.message}. " +
+                "Network may be unavailable or the session has fully expired — log in again.")
+        } else {
+            Log.d(TAG, "Access token refreshed successfully")
         }
+        return result
     }
 
     /**

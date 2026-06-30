@@ -44,12 +44,12 @@ fun stressColor(percent: Int): Color = when {
 }
 
 /**
- * Human-readable label for a 0–100 stress percentage
+ * Human-readable likelihood label for a 0–100 stress probability percentage.
  */
 fun stressLabel(percent: Int): String = when {
-    percent <= 30 -> "Relaxed"
-    percent <= 50 -> "Calm"
-    percent <= 65 -> "Elevated"
-    percent <= 80 -> "High"
-    else -> "Critical"
+    percent <= 30 -> "Stress unlikely"
+    percent <= 50 -> "Low likelihood"
+    percent <= 65 -> "Elevated likelihood"
+    percent <= 80 -> "High likelihood"
+    else          -> "Stress likely"
 }

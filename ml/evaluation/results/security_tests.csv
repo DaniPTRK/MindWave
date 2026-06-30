@@ -1,0 +1,6 @@
+check,count,target,verdict
+Raw biometric fields crossing boundary,0,0,PASS
+Raw-signal keywords in server code,0,0,PASS
+Journal/feature-tensor/prediction uploads,0,0,PASS
+"k-anon rejection tests (7 cases, n<5 → 422)",7,>0,100%
+"Auth/role rejection tests (13 cases, 401/403)",13,>0,100%

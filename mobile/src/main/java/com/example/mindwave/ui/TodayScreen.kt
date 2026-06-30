@@ -27,9 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.mindwave.R
 import com.example.mindwave.data.StressReading
 import com.example.mindwave.data.XaiExplanation
+import com.example.mindwave.sync.WatchConnectionState
 import com.example.mindwave.ui.theme.stressColor
 import com.example.mindwave.ui.theme.stressLabel
 
@@ -50,6 +52,16 @@ fun TodayScreen(
     onFeedback: (Boolean) -> Unit = {},
     onSensorStatusClick: () -> Unit = {},
 ) {
+    // Track whether the user has submitted feedback this session.
+    // Keyed to the reading id so re-entry after navigation keeps the post-feedback state
+    // for the same reading, but resets when a new reading arrives.
+    var feedbackGiven by remember { mutableStateOf(false) }
+    val prevReadingId = remember { mutableStateOf<Long?>(null) }
+    if (latestReading?.id != prevReadingId.value) {
+        feedbackGiven = false
+        prevReadingId.value = latestReading?.id
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,8 +71,9 @@ fun TodayScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         WaveHeader()
-        StressGaugeCard(latestReading, onClick = onOpenDetail)
+        StressGaugeCard(latestReading)
 
+        // Merged sensor-status strip (includes live watch activity data)
         SensorStatusStrip(latestReading, onSensorStatusClick)
 
         if (latestReading != null) {
@@ -75,7 +88,21 @@ fun TodayScreen(
         if (latestReading != null) {
             QuickActionsRow(onStartBreathing = onStartBreathing)
         }
-        FeedbackSection(onFeedback = onFeedback, onJournalClick = onJournalClick)
+
+        if (latestReading != null) {
+            if (!feedbackGiven) {
+                FeedbackSection(
+                    onFeedback = { positive ->
+                        onFeedback(positive)
+                        feedbackGiven = true
+                    },
+                    onJournalClick = onJournalClick,
+                )
+            } else {
+                // After feedback: thank the user and show live sensor chips
+                SensorDataPanel()
+            }
+        }
     }
 }
 
@@ -110,7 +137,7 @@ private fun WaveHeader() {
 private val trackColor = Color(0xFFE0F2F1)
 
 @Composable
-private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
+private fun StressGaugeCard(reading: StressReading?) {
     val stressProb = reading?.stressProbStress ?: 0f
     val percent    = (stressProb * 100).toInt()
     val gaugeColor = stressColor(percent)
@@ -121,7 +148,7 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
     )
 
     Card(
-        modifier  = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier  = Modifier.fillMaxWidth(),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape     = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -131,7 +158,7 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "Current stress level",
+                "Stress likelihood",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -168,8 +195,12 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
                     textAlign = TextAlign.Center,
                 )
             } else {
-                Text("Tap for full XAI breakdown", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Based on the latest wearable sensor window",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -178,7 +209,15 @@ private fun StressGaugeCard(reading: StressReading?, onClick: () -> Unit) {
 
 @Composable
 private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
-    val connected = reading != null
+    val lastWindow     by WatchConnectionState.lastWindow.collectAsStateWithLifecycle()
+    val lastReceivedAt by WatchConnectionState.lastWindowReceivedAt.collectAsStateWithLifecycle()
+
+    val now       = System.currentTimeMillis()
+    val recentMs  = 5 * 60_000L
+    val hasData   = lastReceivedAt > 0
+    val isRecent  = hasData && (now - lastReceivedAt) < recentMs
+    val connected = reading != null || isRecent
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape    = RoundedCornerShape(14.dp),
@@ -189,37 +228,71 @@ private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
                 MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
         ),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = if (connected) Icons.Filled.Watch else Icons.Filled.WatchOff,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (connected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error,
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    if (connected) "Watch connected · sensors active" else "Watch not connected",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (connected) Icons.Filled.Watch else Icons.Filled.WatchOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (connected) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.error,
                 )
-                if (connected) {
-                    Text("HR · EDA · TEMP · ACC",
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (connected) "Watch connected · sensors active" else "Watch not connected",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        if (connected) "HR · EDA · TEMP · ACC"
+                        else "Open the smart wearable and start the MindWave service on the watch.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text("Open the smart wearable and start the MindWave service on the watch.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                Icon(Icons.Filled.ChevronRight, null, Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Icon(Icons.Filled.ChevronRight, null, Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Watch activity row — shown when at least one window has arrived
+            if (lastWindow != null) {
+                Spacer(Modifier.height(6.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val activityTint = if (isRecent) Color(0xFF81C784) else Color(0xFF90A4AE)
+                    Icon(
+                        if (isRecent) Icons.Filled.WifiTethering else Icons.Filled.WifiTetheringOff,
+                        null, Modifier.size(14.dp), tint = activityTint
+                    )
+                    Text(
+                        text = if (isRecent) "Active · last read ${lastWindow!!.time}"
+                               else "Stale · last read ${lastWindow!!.time}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = activityTint,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "HR=${lastWindow!!.hrSamples}  EDA=${lastWindow!!.edaSamples}  T=${lastWindow!!.tempSamples}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else if (!connected) {
+                // nothing extra
+            } else {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Waiting for first window…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
         }
     }
 }
@@ -228,7 +301,9 @@ private fun SensorStatusStrip(reading: StressReading?, onClick: () -> Unit) {
 @Composable
 private fun QuickStatsRow(reading: StressReading) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        QuickStat(Icons.Filled.Favorite,   "HRV",      "%.0f ms".format(reading.hrvRmssd), Modifier.weight(1f))
+        // hrvMean is mean RR-interval in ms; convert to BPM for a friendlier display.
+        val bpm = if (reading.hrvMean > 0f) (60_000f / reading.hrvMean).toInt() else 0
+        QuickStat(Icons.Filled.Favorite,   "Heart Rate", "$bpm BPM", Modifier.weight(1f))
         QuickStat(Icons.Filled.WaterDrop,  "Sweat",    "%.1f µS".format(reading.edaScl),  Modifier.weight(1f))
         QuickStat(Icons.Filled.Thermostat, "Temp",     "%.1f°".format(reading.tempMean),   Modifier.weight(1f))
     }
@@ -257,7 +332,7 @@ private fun XaiCard(explanations: List<XaiExplanation>) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Why this score?", style = MaterialTheme.typography.titleSmall,
+            Text("Why this result?", style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))
             groupXaiExplanations(explanations).forEach { group ->
@@ -323,20 +398,27 @@ private fun FeedbackSection(onFeedback: (Boolean) -> Unit, onJournalClick: () ->
         shape = RoundedCornerShape(16.dp)) {
         Column(modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Was this accurate?", style = MaterialTheme.typography.titleSmall,
+            Text("Does this feel accurate?", style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Your response is stored locally and helps improve future predictions.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             ) {
                 OutlinedButton(onClick = { onFeedback(true) }) {
                     Icon(Icons.Filled.Check, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp)); Text("Yes, stressed")
+                    Spacer(Modifier.width(4.dp)); Text("Yes, felt stressed")
                 }
                 OutlinedButton(onClick = { onFeedback(false) }) {
                     Icon(Icons.Filled.Close, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp)); Text("False alarm")
+                    Spacer(Modifier.width(4.dp)); Text("Not stressed")
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -347,8 +429,33 @@ private fun FeedbackSection(onFeedback: (Boolean) -> Unit, onJournalClick: () ->
                 Icon(Icons.Filled.EditNote, null, Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(Modifier.width(6.dp))
-                Text("Open Journal", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("Add journal note", color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
+        }
+    }
+}
+
+/**
+ * Shown in place of the feedback section after the user has submitted feedback.
+ */
+@Composable
+private fun SensorDataPanel() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF004D40).copy(alpha = 0.7f)),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Filled.Favorite, null, Modifier.size(20.dp), tint = Color(0xFF4DD0E1))
+            Text(
+                "Thanks! Your feedback helps the model improve.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFB2DFDB),
+            )
         }
     }
 }

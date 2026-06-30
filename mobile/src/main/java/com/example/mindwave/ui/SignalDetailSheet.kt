@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,7 +31,7 @@ import kotlin.math.min
  * Signal type that can be charted in [SignalDetailSheet].
  */
 enum class SignalType(val label: String, val unit: String) {
-    STRESS("Stress level", "%"),
+    STRESS("Stress likelihood", "%"),
     HRV("HRV", "ms"),
     TEMPERATURE("Skin Temp", "°C"),
     EDA("Skin Conductance", "µS"),
@@ -225,36 +227,77 @@ private fun SignalLineChart(
     signal: SignalType,
     modifier: Modifier = Modifier,
 ) {
-    val lineColor = MaterialTheme.colorScheme.primary
-    val fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-    val gridColor = MaterialTheme.colorScheme.surfaceVariant
+    val lineColor  = MaterialTheme.colorScheme.primary
+    val fillColor  = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+    val gridColor  = MaterialTheme.colorScheme.surfaceVariant
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
 
     val minV = values.minOf { it.second }
     val maxV = values.maxOf { it.second }
-    val rangeV = max(maxV - minV, 0.01f)
+    // Expand range by 5% each side so points never sit on the edge
+    val pad  = (maxV - minV) * 0.05f
+    val yMin = minV - pad
+    val yMax = maxV + pad
+    val rangeV = max(yMax - yMin, 0.01f)
     val minT = values.first().first.toFloat()
     val maxT = values.last().first.toFloat()
     val rangeT = max(maxT - minT, 1f)
 
+    // Build the 5 Y-axis tick values (min, 25%, 50%, 75%, max)
+    val yTicks = listOf(0f, 0.25f, 0.5f, 0.75f, 1f).map { frac ->
+        yMin + frac * rangeV
+    }
+
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        val padV = 8.dp.toPx()
 
-        fun xOf(ts: Long) = (ts.toFloat() - minT) / rangeT * w
-        fun yOf(v: Float) = h - padV - (v - minV) / rangeV * (h - 2 * padV)
+        // Reserve left margin for Y-axis labels
+        val yAxisWidth = 42.dp.toPx()
+        val padTop    = 6.dp.toPx()
+        val padBottom = 6.dp.toPx()
+        val chartLeft  = yAxisWidth
+        val chartW     = w - chartLeft
+        val chartH     = h - padTop - padBottom
 
-        // Horizontal grid lines
-        repeat(4) { i ->
-            val y = h - padV - i / 3f * (h - 2 * padV)
-            drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1.dp.toPx())
+        val textSize = 9.sp.toPx()
+        val paint = android.graphics.Paint().apply {
+            color     = labelColor
+            this.textSize  = textSize
+            isAntiAlias = true
+            textAlign = android.graphics.Paint.Align.RIGHT
         }
+
+        fun xOf(ts: Long) = chartLeft + (ts.toFloat() - minT) / rangeT * chartW
+        fun yOf(v: Float) = padTop + (1f - (v - yMin) / rangeV) * chartH
+
+        // Horizontal grid lines + Y-axis labels
+        yTicks.forEach { tickVal ->
+            val y = yOf(tickVal)
+            drawLine(gridColor, Offset(chartLeft, y), Offset(w, y), strokeWidth = 0.8.dp.toPx())
+
+            val label = formatValue(tickVal, signal)
+            drawContext.canvas.nativeCanvas.drawText(
+                label,
+                chartLeft - 4.dp.toPx(),
+                y + textSize / 3f,
+                paint,
+            )
+        }
+
+        // Left axis line
+        drawLine(
+            color = gridColor,
+            start = Offset(chartLeft, padTop),
+            end   = Offset(chartLeft, padTop + chartH),
+            strokeWidth = 1.dp.toPx(),
+        )
 
         // Fill under line
         val fillPath = Path().apply {
-            moveTo(xOf(values.first().first), h)
+            moveTo(xOf(values.first().first), padTop + chartH)
             values.forEach { (ts, v) -> lineTo(xOf(ts), yOf(v)) }
-            lineTo(xOf(values.last().first), h)
+            lineTo(xOf(values.last().first), padTop + chartH)
             close()
         }
         drawPath(fillPath, fillColor)
@@ -265,10 +308,10 @@ private fun SignalLineChart(
                 if (i == 0) moveTo(xOf(ts), yOf(v)) else lineTo(xOf(ts), yOf(v))
             }
         }
-        drawPath(linePath, lineColor, style = Stroke(width = 2.dp.toPx(),
-            cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(linePath, lineColor, style = Stroke(
+            width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-        // Dots at data points
+        // Dots at data points (only when few enough to not clutter)
         if (values.size <= 30) {
             values.forEach { (ts, v) ->
                 drawCircle(lineColor, radius = 3.dp.toPx(), center = Offset(xOf(ts), yOf(v)))

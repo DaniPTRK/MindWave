@@ -1,0 +1,2 @@
+operation,reps,mean_ms,p50_ms,p95_ms,p99_ms,max_ms
+DB write (/stats/aggregate via FastAPI+SQLAlchemy+PostgreSQL),30,12.3,11.8,14.8,16.6,17.3

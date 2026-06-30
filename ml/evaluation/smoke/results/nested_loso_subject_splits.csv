@@ -1,0 +1,4 @@
+outer_test_subject,inner_train_subjects,validation_subjects,n_train,n_validation,n_test
+S2,S3,S4,111,113,110
+S3,S2,S4,110,113,111
+S4,S2,S3,110,111,113

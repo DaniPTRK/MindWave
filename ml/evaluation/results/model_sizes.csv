@@ -1,0 +1,6 @@
+model,description,size_bytes,size_kb,size_mb
+mindwave_stress.keras,Training reference (Keras),484431,473.1,0.462
+mindwave_stress.tflite,Deployed - float32 TFLite,238316,232.7,0.227
+mindwave_stress_int8.tflite,Deployed - INT8 quantised TFLite,141512,138.2,0.135
+mindwave_stress_trainable.tflite,On-device FL training (5-signature TFLite),923844,902.2,0.881
+mindwave_stress.keras (weights only),In-memory parameter budget,144264,140.9,0.138

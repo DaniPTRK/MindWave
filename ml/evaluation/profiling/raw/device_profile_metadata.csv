@@ -1,0 +1,19 @@
+property,value
+device,Redmi Note 10 Pro
+model,M2101K6G
+android_version,13 (TKQ1.221013.002)
+soc,Qualcomm Snapdragon 732G; octa-core; up to 2.3 GHz
+abi,arm64-v8a
+nominal_ram_gb,6
+reported_ram_mb,5569
+build_type,debug
+power_state,USB charging
+screen_state,on
+input_source,synthetic sensor windows
+latency_runs,3
+warmup_windows_per_run,10
+measured_windows_per_run,100
+fl_examples,20
+fl_class_balance,10 stress; 10 non-stress
+fl_epochs,2
+fl_batch_size,8

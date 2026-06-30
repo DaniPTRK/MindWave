@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.mindwave.data.StressReading
 import com.example.mindwave.data.XaiExplanation
@@ -25,15 +26,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Insights tab, explains to the user why the model thinks they're stressed.
- * Shows user-friendly summaries of main contributing factors, recent stress peaks,
- * weekly patterns, and an optional expandable section with technical details for the curious.
+ * Insights tab containing patterns and model explanations.
+ * Purpose: "What patterns explain my stress likelihood?"
  */
 @Composable
 fun InsightsScreen(
     latestReading: StressReading?,
     xaiExplanations: List<XaiExplanation>,
     allReadings: List<StressReading>,
+    confirmedStressCount: Int = 0,
     onOpenDetail: () -> Unit = {},
 ) {
     Column(
@@ -47,13 +48,33 @@ fun InsightsScreen(
         Text("Insights", style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary)
 
-        if (latestReading == null || xaiExplanations.isEmpty()) {
+        if (latestReading == null && allReadings.isEmpty()) {
             InsightsEmptyState()
             return@Column
         }
 
-        SensorContributionSection(xaiExplanations, latestReading, onOpenDetail)
+        // What influenced this prediction...
+        if (latestReading != null && xaiExplanations.isNotEmpty()) {
+            SensorContributionSection(xaiExplanations, latestReading, onOpenDetail)
+        } else if (latestReading != null) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Row(modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.BarChart, null, Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                    Spacer(Modifier.width(10.dp))
+                    Text("Signal analysis will appear here after scoring completes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
 
+        // pattern card
+        WeeklyPatternCard(allReadings, confirmedStressCount)
+
+        // recent high-likelihood events
         val peaks = remember(allReadings) {
             allReadings
                 .filter { it.stressProbStress > 0.65f }
@@ -64,13 +85,14 @@ fun InsightsScreen(
             RecentPeaksCard(peaks)
         }
 
-        WeeklyPatternCard(allReadings)
-
-        TechnicalDetailCard(xaiExplanations)
+        // Tech details for XAI explanations
+        if (xaiExplanations.isNotEmpty()) {
+            TechnicalDetailCard(xaiExplanations)
+        }
     }
 }
 
-// Sensor contribution, shows the factors which had the most impact
+// Sensor contribution
 @Composable
 private fun SensorContributionSection(
     explanations: List<XaiExplanation>,
@@ -88,18 +110,18 @@ private fun SensorContributionSection(
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("Main factors", style = MaterialTheme.typography.titleSmall,
+                Text("What influenced this prediction?", style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary)
-                Text("Tap for detail →", style = MaterialTheme.typography.labelSmall,
+                Text("Tap for details", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(12.dp))
 
             groups.forEach { group ->
                 val impactLabel = when {
-                    group.share > 0.35f -> "high impact"
-                    group.share > 0.2f  -> "medium impact"
-                    else                -> "low impact"
+                    group.share > 0.35f -> "strongest signal"
+                    group.share > 0.2f  -> "moderate signal"
+                    else                -> "minor signal"
                 }
                 val impactColor = when {
                     group.share > 0.35f -> Color(0xFFE74C3C)
@@ -132,7 +154,6 @@ private fun SensorContributionSection(
                 Spacer(Modifier.height(4.dp))
             }
 
-            // Artifact warning
             if (showArtifactWarning) {
                 Spacer(Modifier.height(8.dp))
                 Row(
@@ -141,10 +162,10 @@ private fun SensorContributionSection(
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Warning, null, Modifier.size(18.dp),
-                        tint = Color(0xFFF39C12))
+                    Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = Color(0xFFF39C12))
                     Spacer(Modifier.width(8.dp))
-                    Text("High movement detected, this may be a motion artifact rather than true stress.",
+                    Text(
+                        "High movement detected — this may be a motion artifact rather than true stress.",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF7B4F00))
                 }
@@ -153,14 +174,13 @@ private fun SensorContributionSection(
     }
 }
 
-
 @Composable
 private fun RecentPeaksCard(peaks: List<StressReading>) {
     val fmt = remember { SimpleDateFormat("EEE d MMM, HH:mm", Locale.getDefault()) }
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Recent stress peaks", style = MaterialTheme.typography.titleSmall,
+            Text("Recent high-likelihood events", style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(10.dp))
             peaks.forEach { reading ->
@@ -174,7 +194,7 @@ private fun RecentPeaksCard(peaks: List<StressReading>) {
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface)
-                    Text("$pct%", style = MaterialTheme.typography.bodySmall,
+                    Text("$pct% likelihood", style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold, color = stressColor(pct))
                 }
             }
@@ -182,40 +202,70 @@ private fun RecentPeaksCard(peaks: List<StressReading>) {
     }
 }
 
-// Weekly pattern, shows average stress and best/worst moments in the past week
+// Weekly pattern, day-based average for a more balanced metric
 @Composable
-private fun WeeklyPatternCard(readings: List<StressReading>) {
+private fun WeeklyPatternCard(readings: List<StressReading>, confirmedStressCount: Int) {
     val now = System.currentTimeMillis()
     val weekAgo = now - 7L * 24 * 3_600_000
     val weekReadings = readings.filter { it.timestamp >= weekAgo }
     if (weekReadings.isEmpty()) return
 
-    val avg = weekReadings.map { it.stressProbStress }.average().toFloat()
-    val best = weekReadings.minByOrNull { it.stressProbStress }
+    // Group by calendar day and average per day, then average across days
+    val dailyAvgMap = weekReadings
+        .groupBy {
+            val c = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+            "${c.get(Calendar.YEAR)}-${c.get(Calendar.DAY_OF_YEAR)}"
+        }
+        .mapValues { (_, dayReadings) -> dayReadings.map { it.stressProbStress }.average().toFloat() }
+
+    val daysWithData = dailyAvgMap.size
+    val avg = dailyAvgMap.values.average().toFloat()
+    val best  = weekReadings.minByOrNull { it.stressProbStress }
     val worst = weekReadings.maxByOrNull { it.stressProbStress }
-    val confirmed = weekReadings.count { it.stressScore == 1 }
     val dayFmt = SimpleDateFormat("EEE HH:mm", Locale.getDefault())
+
+    val highLikelihood = weekReadings.count { it.stressProbStress > 0.65f }
 
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("This week", style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("This week", style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Coverage: $daysWithData / 7 days",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.height(10.dp))
-            WeekStatRow(Icons.Filled.BarChart, "Average stress",
+
+            WeekStatRow(Icons.Filled.BarChart, "Average likelihood",
                 "${"%.0f".format(avg * 100)}%", stressColor((avg * 100).toInt()))
             worst?.let {
-                WeekStatRow(Icons.AutoMirrored.Filled.TrendingUp, "Highest",
+                WeekStatRow(Icons.AutoMirrored.Filled.TrendingUp, "Peak likelihood",
                     "${"%.0f".format(it.stressProbStress * 100)}% · ${dayFmt.format(Date(it.timestamp))}",
                     Color(0xFFE74C3C))
             }
             best?.let {
-                WeekStatRow(Icons.AutoMirrored.Filled.TrendingDown, "Most relaxed",
+                WeekStatRow(Icons.AutoMirrored.Filled.TrendingDown, "Lowest likelihood",
                     "${"%.0f".format(it.stressProbStress * 100)}% · ${dayFmt.format(Date(it.timestamp))}",
                     Color(0xFF27AE60))
             }
-            WeekStatRow(Icons.Filled.ThumbUp, "Confirmed events",
-                "$confirmed readings", MaterialTheme.colorScheme.primary)
+            WeekStatRow(Icons.Filled.Sensors, "High-likelihood readings",
+                "$highLikelihood", MaterialTheme.colorScheme.onSurfaceVariant)
+            WeekStatRow(Icons.Filled.ThumbUp, "Confirmed stress events",
+                "$confirmedStressCount", MaterialTheme.colorScheme.primary)
+
+            if (daysWithData < 3) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Limited data — wear your watch more days for reliable weekly insights.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -247,7 +297,7 @@ private fun TechnicalDetailCard(explanations: List<XaiExplanation>) {
                 Icon(Icons.Filled.Science, null, Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("Technical feature detail",
+                Text("Technical model details",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary)
@@ -263,8 +313,10 @@ private fun TechnicalDetailCard(explanations: List<XaiExplanation>) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(6.dp))
                 val sorted = explanations.sortedBy { it.rank }.take(10)
-                val maxImp = sorted.maxOfOrNull { it.importance } ?: 1f
+                // Guard against zero max imp errs
+                val maxImp = (sorted.maxOfOrNull { it.importance } ?: 1f).coerceAtLeast(1e-6f)
                 sorted.forEach { xai ->
+                    val barFraction = (xai.importance / maxImp).coerceIn(0.01f, 1f)
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Text(xai.featureName,
@@ -272,11 +324,11 @@ private fun TechnicalDetailCard(explanations: List<XaiExplanation>) {
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Box(modifier = Modifier
-                            .weight(xai.importance / maxImp)
+                            .weight(barFraction)
                             .height(7.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)))
-                        Spacer(modifier = Modifier.weight((1f - xai.importance / maxImp).coerceAtLeast(0.01f)))
+                        Spacer(modifier = Modifier.weight((1f - barFraction).coerceAtLeast(0.01f)))
                         Text("${"%.1f".format(xai.importance * 100)}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -304,10 +356,12 @@ private fun InsightsEmptyState() {
             Text("No insights yet", style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(8.dp))
-            Text("Insights appear after the first stress reading arrives from your watch.",
+            Text(
+                "Insights appear after your first sensor window arrives from the watch.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                textAlign = TextAlign.Center)
         }
     }
 }
+

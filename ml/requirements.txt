@@ -1,14 +1,18 @@
 # Core numerics
-numpy>=1.26,<2.0
+numpy>=1.23.5,<2.0   # TF 2.16 requires numpy<2.0
 pandas>=2.1
-scipy>=1.11 # Butterworth filters, welch PSD, resample
-scikit-learn>=1.3 # StandardScaler, metrics, LOSO splitter, class_weight
+scipy>=1.11          # Butterworth filters, welch PSD, resample
+scikit-learn>=1.3    # StandardScaler, metrics, LOSO splitter, class_weight
 
 # Deep learning
-tensorflow==2.15.* # pinned, stable ver LSTM -> TFLite UNIDIRECTIONAL_SEQUENCE_LSTM path
+# TF 2.16 uses Keras 3 (legacy optimizer API removed); TrainableModule uses
+# manual vanilla SGD (var.assign_sub(lr * grad)) so no Keras optimizer object
+# is needed and the explain GradientTape signature exports cleanly alongside
+# the train GradientTape signature.
+tensorflow==2.16.*
 
 # Physiological signal processing
-neurokit2>=0.2.7 # PPG peak detection, HRV time/freq, EDA decomposition + peaks
+neurokit2>=0.2.7,<0.2.9  # 0.2.9+ requires numpy>=2.0, incompatible with TF 2.16
 
 # Plotting / notebooks
 matplotlib>=3.8
@@ -17,7 +21,7 @@ jupyterlab>=4.0
 
 # Utilities
 tqdm>=4.66
-joblib>=1.3 # scaler persistence
+joblib>=1.3  # scaler persistence
 
 # Federated learning
 # Pinned to 1.11.* for the modern ClientApp / ServerApp / run_simulation API.

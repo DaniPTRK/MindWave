@@ -30,7 +30,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Journal list screen — chronological journal entries with stress score + XAI thumbnails.
+ * Journal list screen, chronological journal entries with stress score + XAI thumbnails.
  */
 @Composable
 fun JournalListScreen(
@@ -198,14 +198,14 @@ private fun JournalEntryCard(
                     Spacer(Modifier.height(4.dp))
                 }
 
-                // Stress score at time of entry
+                // Likelihood at time of entry
                 if (stressScore != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Stress: ",
+                        Text("Prediction at the time: ",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            "${"%.0f".format(stressScore * 100)}%",
+                            "${"%.0f".format(stressScore * 100)}% stress likelihood",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = when {
@@ -217,29 +217,31 @@ private fun JournalEntryCard(
                     }
                 }
 
-                // Mini XAI bar (top 3)
+                // Friendly signal contributors (no raw feature names)
                 if (xaiExplanations.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
-                    val top3 = xaiExplanations.sortedBy { it.rank }.take(3)
-                    val maxImp = top3.maxOf { it.importance }
-                    top3.forEach { xai ->
+                    val groups = groupXaiExplanations(xaiExplanations).take(3)
+                    groups.forEach { group ->
                         Row(
                             modifier = Modifier.padding(vertical = 1.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            Icon(group.icon, group.label,
+                                modifier = Modifier.size(11.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+                            Spacer(Modifier.width(4.dp))
                             Text(
-                                xai.featureName.take(6),
-                                modifier = Modifier.width(45.dp),
+                                group.label,
+                                modifier = Modifier.width(90.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 9.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Box(
                                 modifier = Modifier
-                                    .width((60 * xai.importance / maxImp).dp)
-                                    .height(6.dp)
+                                    .width((50 * group.share).dp)
+                                    .height(5.dp)
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(MaterialTheme.colorScheme.primary)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                             )
                         }
                     }

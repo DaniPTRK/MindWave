@@ -1,0 +1,443 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "1a287447a6ee2297aaf1c8ccab28b246",
+    "entities": [
+      {
+        "tableName": "stress_readings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `userEmail` TEXT NOT NULL, `hrvMean` REAL NOT NULL, `hrvSdnn` REAL NOT NULL, `hrvRmssd` REAL NOT NULL, `edaScl` REAL NOT NULL, `edaScr` REAL NOT NULL, `tempMean` REAL NOT NULL, `accMag` REAL NOT NULL, `stressScore` INTEGER NOT NULL, `stressProbBaseline` REAL NOT NULL, `stressProbStress` REAL NOT NULL, `stressProbAmusement` REAL NOT NULL, `synced` INTEGER NOT NULL, `featureTensor` BLOB)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userEmail",
+            "columnName": "userEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hrvMean",
+            "columnName": "hrvMean",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hrvSdnn",
+            "columnName": "hrvSdnn",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hrvRmssd",
+            "columnName": "hrvRmssd",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "edaScl",
+            "columnName": "edaScl",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "edaScr",
+            "columnName": "edaScr",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tempMean",
+            "columnName": "tempMean",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accMag",
+            "columnName": "accMag",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressScore",
+            "columnName": "stressScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressProbBaseline",
+            "columnName": "stressProbBaseline",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressProbStress",
+            "columnName": "stressProbStress",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressProbAmusement",
+            "columnName": "stressProbAmusement",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "featureTensor",
+            "columnName": "featureTensor",
+            "affinity": "BLOB",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_stress_readings_userEmail",
+            "unique": false,
+            "columnNames": [
+              "userEmail"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_stress_readings_userEmail` ON `${TABLE_NAME}` (`userEmail`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "xai_explanations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `readingId` INTEGER NOT NULL, `featureName` TEXT NOT NULL, `importance` REAL NOT NULL, `rank` INTEGER NOT NULL, FOREIGN KEY(`readingId`) REFERENCES `stress_readings`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingId",
+            "columnName": "readingId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "featureName",
+            "columnName": "featureName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importance",
+            "columnName": "importance",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rank",
+            "columnName": "rank",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_xai_explanations_readingId",
+            "unique": false,
+            "columnNames": [
+              "readingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_xai_explanations_readingId` ON `${TABLE_NAME}` (`readingId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "stress_readings",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "readingId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "emotional_journals",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `readingId` INTEGER, `timestamp` INTEGER NOT NULL, `userMood` INTEGER NOT NULL, `note` TEXT NOT NULL, `tags` TEXT NOT NULL, `userEmail` TEXT NOT NULL, FOREIGN KEY(`readingId`) REFERENCES `stress_readings`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingId",
+            "columnName": "readingId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userMood",
+            "columnName": "userMood",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userEmail",
+            "columnName": "userEmail",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_emotional_journals_readingId",
+            "unique": false,
+            "columnNames": [
+              "readingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_journals_readingId` ON `${TABLE_NAME}` (`readingId`)"
+          },
+          {
+            "name": "index_emotional_journals_userEmail",
+            "unique": false,
+            "columnNames": [
+              "userEmail"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_emotional_journals_userEmail` ON `${TABLE_NAME}` (`userEmail`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "stress_readings",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "readingId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "context_events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `readingId` INTEGER, `timestamp` INTEGER NOT NULL, `source` TEXT NOT NULL, `title` TEXT NOT NULL, `metadata` TEXT NOT NULL, FOREIGN KEY(`readingId`) REFERENCES `stress_readings`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readingId",
+            "columnName": "readingId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metadata",
+            "columnName": "metadata",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_context_events_readingId",
+            "unique": false,
+            "columnNames": [
+              "readingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_context_events_readingId` ON `${TABLE_NAME}` (`readingId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "stress_readings",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "readingId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "latency_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `windowId` INTEGER NOT NULL, `featureUs` INTEGER NOT NULL, `normalizeUs` INTEGER NOT NULL, `inferenceUs` INTEGER NOT NULL, `xaiUs` INTEGER NOT NULL, `roomUs` INTEGER NOT NULL, `alertUs` INTEGER NOT NULL, `totalUs` INTEGER NOT NULL, `isWarmup` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "windowId",
+            "columnName": "windowId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "featureUs",
+            "columnName": "featureUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizeUs",
+            "columnName": "normalizeUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inferenceUs",
+            "columnName": "inferenceUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xaiUs",
+            "columnName": "xaiUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "roomUs",
+            "columnName": "roomUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alertUs",
+            "columnName": "alertUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalUs",
+            "columnName": "totalUs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWarmup",
+            "columnName": "isWarmup",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_latency_records_windowId",
+            "unique": true,
+            "columnNames": [
+              "windowId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_latency_records_windowId` ON `${TABLE_NAME}` (`windowId`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1a287447a6ee2297aaf1c8ccab28b246')"
+    ]
+  }
+}

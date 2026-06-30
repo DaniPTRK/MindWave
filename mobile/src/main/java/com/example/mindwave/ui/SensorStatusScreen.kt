@@ -177,6 +177,7 @@ fun SensorStatusScreen(
                     }
                 }
             }
+
         }
     }
 }

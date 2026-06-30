@@ -65,7 +65,7 @@ class TestAuditLogging:
         await client.post("/auth/register", json={
             "email": "noauth@example.com",
             "password": "NoAuth123",
-        }) 
+        })
 
         async with TestSessionLocal() as db:
             result = await db.execute(

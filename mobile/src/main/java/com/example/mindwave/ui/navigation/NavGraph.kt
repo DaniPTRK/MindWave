@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.mindwave.data.EmotionalJournal
 import com.example.mindwave.ui.*
 import com.example.mindwave.ui.auth.AuthViewModel
@@ -108,6 +109,13 @@ fun MindWaveApp() {
                         }
                     },
                     onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                    onContinueOffline = {
+                        authViewModel.continueOffline {
+                            navController.navigate(Screen.Today.route) {
+                                popUpTo(Screen.Login.route) { inclusive = true }
+                            }
+                        }
+                    },
                 )
             }
             composable(Screen.Register.route) {
@@ -155,14 +163,16 @@ fun MindWaveApp() {
 
             // Insights tab
             composable(Screen.Insights.route) {
-                val latest by dashViewModel.latestReading.collectAsStateWithLifecycle()
-                val xai    by dashViewModel.xaiExplanations.collectAsStateWithLifecycle()
-                val all    by dashViewModel.allReadings.collectAsStateWithLifecycle()
+                val latest    by dashViewModel.latestReading.collectAsStateWithLifecycle()
+                val xai       by dashViewModel.xaiExplanations.collectAsStateWithLifecycle()
+                val all       by dashViewModel.allReadings.collectAsStateWithLifecycle()
+                val confirmed by dashViewModel.confirmedStressEventCount.collectAsStateWithLifecycle()
                 InsightsScreen(
-                    latestReading   = latest,
-                    xaiExplanations = xai,
-                    allReadings     = all,
-                    onOpenDetail    = { latest?.let { navController.navigate(Screen.StressDetail.createRoute(it.id)) } },
+                    latestReading        = latest,
+                    xaiExplanations      = xai,
+                    allReadings          = all,
+                    confirmedStressCount = confirmed,
+                    onOpenDetail         = { latest?.let { navController.navigate(Screen.StressDetail.createRoute(it.id)) } },
                 )
             }
 
@@ -171,6 +181,9 @@ fun MindWaveApp() {
                 route = Screen.StressDetail.route,
                 arguments = listOf(navArgument(Screen.StressDetail.ARG_READING_ID) {
                     type = NavType.LongType
+                }),
+                deepLinks = listOf(navDeepLink {
+                    uriPattern = "mindwave://stress_detail/{readingId}"
                 }),
             ) { entry ->
                 val id = entry.arguments?.getLong(Screen.StressDetail.ARG_READING_ID) ?: 0L
@@ -246,6 +259,7 @@ fun MindWaveApp() {
                             }
                         }
                     },
+                    onOpenBenchmark = { navController.navigate(Screen.Benchmark.route) },
                 )
             }
 
@@ -261,6 +275,11 @@ fun MindWaveApp() {
                     latestReading = latest,
                     onBack = { navController.popBackStack() },
                 )
+            }
+
+            // benchmark / profiling
+            composable(Screen.Benchmark.route) {
+                BenchmarkScreen(onBack = { navController.popBackStack() })
             }
         }
     }

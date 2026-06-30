@@ -34,6 +34,8 @@ class SettingsRepository(private val context: Context, private val userEmail: St
         val quietHoursEnabled: Boolean = true,
         val quietStartHour: Int = 22,
         val quietEndHour: Int = 7,
+        /** Minimum cooldown between stress-alert notifications. Options: 15, 30, 60 min. */
+        val notificationIntervalMinutes: Int = 30,
     )
 
     val settings: Flow<Settings> = context.dataStore.data.map { p ->
@@ -44,6 +46,7 @@ class SettingsRepository(private val context: Context, private val userEmail: St
             quietHoursEnabled = p[keyQuietOn] ?: true,
             quietStartHour = p[keyQuietStart] ?: 22,
             quietEndHour = p[keyQuietEnd] ?: 7,
+            notificationIntervalMinutes = p[keyNotifInterval] ?: 30,
         )
     }
 
@@ -57,18 +60,20 @@ class SettingsRepository(private val context: Context, private val userEmail: St
         it[keyQuietStart] = startHour
         it[keyQuietEnd] = endHour
     }
+    suspend fun setNotificationInterval(minutes: Int) = edit { it[keyNotifInterval] = minutes }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
     }
 
     // Per-user preference keys, prefixed with the sanitized email slug
-    private val keyThreshold  = floatPreferencesKey("${prefix}_alert_threshold")
-    private val keyFl         = booleanPreferencesKey("${prefix}_fl_enabled")
-    private val keyCalendar   = booleanPreferencesKey("${prefix}_calendar_enabled")
-    private val keyQuietOn    = booleanPreferencesKey("${prefix}_quiet_hours_enabled")
-    private val keyQuietStart = intPreferencesKey("${prefix}_quiet_start_hour")
-    private val keyQuietEnd   = intPreferencesKey("${prefix}_quiet_end_hour")
+    private val keyThreshold    = floatPreferencesKey("${prefix}_alert_threshold")
+    private val keyFl           = booleanPreferencesKey("${prefix}_fl_enabled")
+    private val keyCalendar     = booleanPreferencesKey("${prefix}_calendar_enabled")
+    private val keyQuietOn      = booleanPreferencesKey("${prefix}_quiet_hours_enabled")
+    private val keyQuietStart   = intPreferencesKey("${prefix}_quiet_start_hour")
+    private val keyQuietEnd     = intPreferencesKey("${prefix}_quiet_end_hour")
+    private val keyNotifInterval = intPreferencesKey("${prefix}_notif_interval_minutes")
 
     companion object {
         fun isWithinQuietHours(hour: Int, startHour: Int, endHour: Int): Boolean =
