@@ -112,9 +112,17 @@ class TrainableModule(tf.Module):
         """Forward pass — returns softmax probabilities."""
         return {"logits": self.model(x, training=False)}
 
-    @tf.function(input_signature=[])
-    def parameters(self):
-        """Read all trainable weights as a dict of tensors."""
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=(1,), dtype=tf.float32, name="dummy"),
+    ])
+    def parameters(self, dummy):
+        """Read all trainable weights as a dict of tensors.
+
+        The ``dummy`` input (a single float, ignored) is required because the
+        TFLite 2.16 Java Interpreter.runSignature() throws
+        IllegalArgumentException when the inputs map is empty, even for
+        signatures that have no real inputs.  Pass floatArrayOf(0f) from Kotlin.
+        """
         return {
             f"var_{i}": tf.identity(v)
             for i, v in enumerate(self.trainable_vars)
@@ -212,7 +220,8 @@ def export_trainable_tflite(
     signatures = {
         "infer":      module.infer.get_concrete_function(),
         "train":      module.train.get_concrete_function(),
-        "parameters": module.parameters.get_concrete_function(),
+        "parameters": module.parameters.get_concrete_function(
+                          tf.zeros([1], dtype=tf.float32)),
         "restore":    restore_fn.get_concrete_function(),
         "explain":    module.explain.get_concrete_function(),
     }
@@ -266,4 +275,3 @@ def export_scaler_params(
 
 
 __all__ = ["TrainableModule", "export_trainable_tflite", "export_scaler_params"]
-

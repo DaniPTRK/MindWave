@@ -2,7 +2,10 @@
 
 Runs against any PostgreSQL reachable via DATABASE_URL_SYNC (psycopg2 DSN).
 
-Usage:
+Usage — local Docker Compose:
+    docker compose exec api python seed_model.py
+
+Usage — Railway (from your laptop):
     $env:DATABASE_URL_SYNC = "postgresql://postgres:PASS@HOST.railway.app:PORT/railway"
     python seed_model.py
 
@@ -60,15 +63,33 @@ def seed(dsn: str) -> None:
                 "SELECT version, weights_path, notes FROM model_versions ORDER BY version DESC LIMIT 1"
             )
             latest = cur.fetchone()
-            print(
-                f"[seed_model] model_versions already has {count} row(s). "
-                f"Latest: v{latest['version']} → {latest['weights_path']}"
-            )
-            print("[seed_model] Nothing to do — skipping insert.")
+            # If the existing row points at the old keras file, update it in-place.
+            if latest["weights_path"] == "mindwave_stress.keras":
+                cur.execute(
+                    """
+                    UPDATE model_versions
+                       SET weights_path = %s,
+                           notes        = %s
+                     WHERE version = %s
+                    """,
+                    (
+                        "mindwave_stress_trainable.tflite",
+                        "Initial seed — trainable TFLite export (5 signatures: infer/train/parameters/restore/explain)",
+                        latest["version"],
+                    ),
+                )
+                conn.commit()
+                print(f"[seed_model] ✓ Updated model_version v{latest['version']}: "
+                      f"mindwave_stress.keras → mindwave_stress_trainable.tflite")
+            else:
+                print(
+                    f"[seed_model] model_versions already has {count} row(s). "
+                    f"Latest: v{latest['version']} → {latest['weights_path']}"
+                )
+                print("[seed_model] Nothing to do — skipping.")
             return
 
-        # Insert version 1 pointing at the bundled Keras model.
-        # This file must exist in the /models volume that Docker / Railway mounts.
+        # Fresh insert — no rows yet.
         cur.execute(
             """
             INSERT INTO model_versions
@@ -80,12 +101,12 @@ def seed(dsn: str) -> None:
                 0,
                 None,
                 None,
-                "mindwave_stress.keras",
-                "Initial seed,c bundled WESAD LSTM model (pre-FL baseline)",
+                "mindwave_stress_trainable.tflite",
+                "Initial seed — trainable TFLite export (5 signatures: infer/train/parameters/restore/explain)",
             ),
         )
         conn.commit()
-        print("[seed_model] Inserted model_version v1, mindwave_stress.keras")
+        print("[seed_model] ✓ Inserted model_version v1 → mindwave_stress_trainable.tflite")
         print("[seed_model] GET /model/latest and GET /model/1/download are now functional.")
 
     except Exception as exc:
@@ -99,4 +120,3 @@ def seed(dsn: str) -> None:
 
 if __name__ == "__main__":
     seed(_get_dsn(sys.argv))
-

@@ -485,8 +485,10 @@ class FLTrainingWorker(
     private fun saveWeights(interp: Interpreter, dest: File): Boolean {
         return try {
             val outputs = mutableMapOf<String, Any>()
+            // The `parameters` signature requires a dummy float[1] input because
+            // TFLite 2.16's Java Interpreter.runSignature() throws when inputs is empty.
             interp.runSignature(
-                emptyMap<String, Any>(),
+                mapOf("dummy" to floatArrayOf(0f)),
                 outputs,
                 "parameters",
             )
