@@ -38,6 +38,7 @@ COPY alembic.ini ./alembic.ini
 COPY pyproject.toml ./pyproject.toml
 COPY seed_demo.py ./seed_demo.py
 COPY entrypoint.sh ./entrypoint.sh
+COPY models/ /models/
 
 RUN chown -R appuser:appuser /app && chmod +x /app/entrypoint.sh
 USER appuser
