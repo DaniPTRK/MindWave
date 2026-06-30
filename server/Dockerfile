@@ -40,7 +40,7 @@ COPY seed_demo.py ./seed_demo.py
 COPY entrypoint.sh ./entrypoint.sh
 COPY models/ /models/
 
-RUN chown -R appuser:appuser /app && chmod +x /app/entrypoint.sh
+RUN chown -R appuser:appuser /app /models && chmod +x /app/entrypoint.sh
 USER appuser
 
 EXPOSE 8000

@@ -484,7 +484,20 @@ class FLTrainingWorker(
 
     private fun saveWeights(interp: Interpreter, dest: File): Boolean {
         return try {
+            // Pre-allocate output buffers by inspecting the parameters signature's output tensors.
+            // TFLite 2.16 runSignature() requires outputs to be pre-populated with correctly
+            // shaped Java arrays — a flat FloatArray won't work for 2D+ tensors.
+            val sigOutputNames = interp.getSignatureOutputs("parameters")
+            if (sigOutputNames.isEmpty()) {
+                Log.w(TAG, "saveWeights: parameters signature has no outputs — skipping")
+                return false
+            }
             val outputs = mutableMapOf<String, Any>()
+            for (name in sigOutputNames) {
+                val tensor = interp.getOutputTensorFromSignature(name, "parameters")
+                val shape = tensor.shape()
+                outputs[name] = allocateOutputBuffer(shape)
+            }
             // The `parameters` signature requires a dummy float[1] input because
             // TFLite 2.16's Java Interpreter.runSignature() throws when inputs is empty.
             interp.runSignature(
@@ -496,22 +509,7 @@ class FLTrainingWorker(
             java.io.DataOutputStream(dest.outputStream().buffered()).use { dos ->
                 dos.writeInt(outputs.size)
                 outputs.entries.sortedBy { it.key }.forEach { (_, v) ->
-                    val arr: FloatArray = when (v) {
-                        is FloatArray -> v
-                        is Array<*>   -> {
-                            val flat = mutableListOf<Float>()
-                            fun flatten(obj: Any?) {
-                                when (obj) {
-                                    is Array<*>   -> obj.forEach { flatten(it) }
-                                    is FloatArray -> obj.forEach { flat.add(it) }
-                                    is Float      -> flat.add(obj)
-                                }
-                            }
-                            flatten(v)
-                            flat.toFloatArray()
-                        }
-                        else -> FloatArray(0)
-                    }
+                    val arr = flattenToFloatArray(v)
                     dos.writeInt(arr.size)
                     arr.forEach { dos.writeFloat(it) }
                 }
@@ -522,6 +520,36 @@ class FLTrainingWorker(
             Log.w(TAG, "saveWeights failed: ${e.message}")
             false
         }
+    }
+
+    /**
+     * Allocates a correctly-shaped Java array matching the TFLite tensor shape.
+     * TFLite requires exact dimensionality: [N] → FloatArray(N),
+     * [M,N] → Array(M) { FloatArray(N) }, etc.
+     */
+    private fun allocateOutputBuffer(shape: IntArray): Any {
+        return when (shape.size) {
+            1 -> FloatArray(shape[0])
+            2 -> Array(shape[0]) { FloatArray(shape[1]) }
+            3 -> Array(shape[0]) { Array(shape[1]) { FloatArray(shape[2]) } }
+            else -> FloatArray(shape.fold(1) { acc, d -> acc * d }) // fallback flat
+        }
+    }
+
+    /**
+     * Recursively flatten any nested array structure to a flat FloatArray for serialization.
+     */
+    private fun flattenToFloatArray(obj: Any?): FloatArray {
+        val flat = mutableListOf<Float>()
+        fun flatten(o: Any?) {
+            when (o) {
+                is FloatArray -> o.forEach { flat.add(it) }
+                is Array<*>   -> o.forEach { flatten(it) }
+                is Float      -> flat.add(o)
+            }
+        }
+        flatten(obj)
+        return flat.toFloatArray()
     }
 
     /**
